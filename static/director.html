@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 小院直播中控台 v14 · 极简实战版</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: linear-gradient(145deg, #f4f8ee 0%, #fefaf2 52%, #eff5ff 100%);
+      color: #36281e;
+      font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+      min-height: 100vh;
+      display: grid; grid-template-columns: 428px 1fr; gap: 16px; padding: 16px;
+    }
+    @media (max-width: 1120px) { body { grid-template-columns: 1fr; } }
+
+    .card {
+      background: rgba(255, 255, 255, 0.96);
+      border: 1.5px solid #e6d8c3; border-radius: 18px; padding: 14px 16px;
+      box-shadow: 0 8px 22px rgba(108, 72, 36, 0.06);
+    }
+    .preview-col {
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+      position: sticky; top: 16px; align-self: start;
+    }
+    .nav-bar { width: 100%; display: flex; gap: 6px; }
+    .nav-bar a {
+      flex: 1; text-align: center; text-decoration: none;
+      background: #fef3c7; color: #92400e; border: 1.5px solid #f59e0b;
+      padding: 8px 6px; border-radius: 11px; font-size: 12.5px; font-weight: 800;
+    }
+    .nav-bar a.colab-link { background: #111827; color: #fff; border-color: #111827; }
+
+    iframe {
+      width: 396px; height: 704px; border: 3px solid #a16207; border-radius: 18px;
+      background: #dcebc8; box-shadow: 0 12px 28px rgba(107, 68, 35, 0.16);
+    }
+    .eco-box {
+      width: 396px; height: 220px; border: 2.5px dashed #16a34a; border-radius: 18px;
+      background: linear-gradient(145deg, #f0fdf4 0%, #fffbeb 100%);
+      display: none; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+      padding: 20px; text-align: center; color: #166534;
+    }
+    .eco-box.show { display: flex; }
+    .eco-box h3 { font-size: 16px; font-weight: 900; }
+    .eco-box p { font-size: 12.5px; color: #4b5563; line-height: 1.55; }
+    iframe.eco-hidden { display: none; }
+
+    .controls-col { display: flex; flex-direction: column; gap: 12px; }
+
+    .status-ribbon {
+      background: linear-gradient(135deg, #fff 0%, #fffbeb 55%, #f0fdf4 100%);
+      border: 1.5px solid #e5d5bc; border-radius: 14px; padding: 9px 14px;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+    }
+    .ribbon-left { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .ribbon-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 11px; border-radius: 999px; font-size: 12px; font-weight: 800;
+      background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1;
+    }
+    .ribbon-pill.ok { background: #dcfce7; color: #15803d; border-color: #86efac; }
+    .ribbon-pill.purple { background: #f3e8ff; color: #7e22ce; border-color: #d8b4fe; }
+    .ribbon-pill.blue { background: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
+
+    h2 {
+      font-size: 15px; font-weight: 900; color: #78350f;
+      margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;
+    }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+    .row:last-child { margin-bottom: 0; }
+    input, select {
+      background: #fffdf8; border: 1.5px solid #d6c3a5; color: #36281e;
+      padding: 7.5px 10px; border-radius: 10px; font-size: 13px; outline: none;
+    }
+    input:focus, select:focus { border-color: #d97706; background: #fff; }
+    button {
+      border: none; border-radius: 10px; padding: 8px 13px;
+      font-size: 13px; font-weight: 800; cursor: pointer; color: #fff; background: #2563eb;
+      transition: transform 0.08s, filter 0.15s;
+    }
+    button:hover { filter: brightness(1.06); }
+    button:active { transform: scale(0.98); }
+    button.green  { background: #16a34a; }
+    button.amber  { background: #d97706; }
+    button.pink   { background: #db2777; }
+    button.red    { background: #dc2626; }
+    button.slate  { background: #64748b; }
+    button.dark   { background: #1e293b; }
+    button.teal   { background: #0d9488; }
+    button.indigo { background: #4f46e5; }
+    button.recording { background: #dc2626; animation: pulseMic 1s infinite; }
+    @keyframes pulseMic { 0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.55); } 50% { box-shadow: 0 0 0 8px rgba(220,38,38,0); } }
+
+    .badge { font-size: 12px; font-weight: 800; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+    .badge.ok   { background: #dcfce7; color: #15803d; }
+    .badge.warn { background: #fef3c7; color: #b45309; }
+    .badge.stop { background: #fee2e2; color: #b91c1c; }
+    .badge.info { background: #dbeafe; color: #1d4ed8; }
+
+    .live-master { background: linear-gradient(135deg, #fffbeb 0%, #ecfdf5 100%); border: 2px solid #16a34a; }
+    .interact-card { background: linear-gradient(135deg, #eff6ff 0%, #fff7ed 100%); border: 2px solid #60a5fa; }
+
+    .grid-stage { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; }
+    .grid-bench { display: grid; grid-template-columns: repeat(auto-fit, minmax(172px, 1fr)); gap: 8px; }
+    .mini-slot {
+      background: #fffdf8; border: 1.5px solid #e7d8c1; border-radius: 12px; padding: 9px 10px;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .mini-slot-head { display: flex; align-items: center; gap: 8px; }
+    .mini-slot-head img {
+      width: 38px; height: 38px; border-radius: 50%; object-fit: cover; object-position: top;
+      background: #fff; border: 2px solid #d6c3a5; flex-shrink: 0;
+    }
+    .mini-slot h4 { font-size: 13px; line-height: 1.25; }
+    .mini-slot .sub { font-size: 11.4px; color: #78716c; line-height: 1.4; }
+    .mem-box {
+      background: #fefce8; border: 1px solid #fde68a; border-radius: 8px; padding: 5px 7px;
+      font-size: 11px; color: #854d0e; line-height: 1.4; max-height: 52px; overflow-y: auto;
+    }
+    .order-tag {
+      font-size: 11px; font-weight: 900; padding: 1px 7px; border-radius: 999px;
+      background: #e0e7ff; color: #3730a3; margin-left: auto;
+    }
+    .order-tag.next { background: #dcfce7; color: #15803d; }
+
+    .tip { font-size: 12px; color: #78716c; line-height: 1.5; }
+    .toast-bar {
+      position: fixed; bottom: 18px; right: 18px; z-index: 9999;
+      background: #1e293b; color: #fff; padding: 10px 16px; border-radius: 12px;
+      font-size: 13px; font-weight: 800; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.25);
+      opacity: 0; transform: translateY(10px); pointer-events: none; transition: all 0.22s ease;
+    }
+    .toast-bar.show { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+  <!-- 左侧：1:1 实时竖屏舞台预览（支持一键省电关闭，避免与 OBS 双份渲染吃 CPU/GPU！） -->
+  <div class="card preview-col">
+    <div class="nav-bar">
+      <a href="/stage?mute_audio=1" target="_blank">🌻 竖屏舞台(静音)</a>
+      <a href="http://127.0.0.1:8769" target="_blank" style="background:linear-gradient(135deg,#fb7299,#f59e0b);color:#fff;border-color:transparent;">🎬 独立B站面板(:8769)↗</a>
+      <a href="http://127.0.0.1:8768" target="_blank" class="colab-link">⚡ 通用Colab中枢(:8768)↗</a>
+    </div>
+    <button id="btn-eco-preview" class="teal" style="width:100%;" onclick="toggleEcoPreview()">⚡ 省电：关闭本地预览（省50% GPU/CPU）</button>
+    <iframe id="stage-preview-iframe" src="/stage?mute_audio=1"></iframe>
+    <div id="eco-placeholder" class="eco-box">
+      <h3>⚡ 已进入电脑省电轻载模式</h3>
+      <p>导播台预览已暂停渲染，<b>OBS 与抖音直播画面完全正常推送</b>！<br/>平时办公/看剧时保持此状态可省下约 <b>50%</b> 电脑资源。</p>
+      <button class="green" onclick="toggleEcoPreview(false)">👁️ 临时恢复预览画面</button>
+    </div>
+    <div class="tip" style="text-align:center;">
+      ✅ 已适配全面屏 0 裁切大字版 · 30FPS 轻载渲染<br/>
+      💡 <b>电脑减负诀窍</b>：开播后点上方「省电关闭预览」，也不要重复开多个舞台标签页！
+    </div>
+  </div>
+
+  <!-- 右侧：4 大极简实战中控卡片（彻底清理旧冗余功能！） -->
+  <div class="controls-col">
+    <div class="status-ribbon">
+      <div class="ribbon-left">
+        <span id="dir-scene-pill" class="ribbon-pill purple">✨ 舞台：原版58部件骨骼活体剧场</span>
+        <span id="dir-tts-pill" class="ribbon-pill ok">🎙️ 语音：95GB 真人语速克隆 + 本机 0.6B 热备</span>
+        <span id="dir-vb-pill" class="ribbon-pill blue">📦 离线语音库：0 / 48 条</span>
+      </div>
+      <a href="http://127.0.0.1:8768" target="_blank" style="font-size:12px;font-weight:800;color:#c2410c;text-decoration:none;background:#ffedd5;padding:4px 10px;border-radius:999px;">⚡ 通用Colab中枢 (:8768) ↗</a>
+    </div>
+
+    <!-- 1. 开播总控 & 真人开麦接管 / 语音转文字 / 打字插麦 -->
+    <div class="card live-master">
+      <h2>
+        <span>🛡️ 1. 直播总控 & 真人开麦接管（支持 OBS 真人直说 / 麦转字 / 打字插麦）</span>
+        <span id="live-badge" class="badge stop">⏹️ 已下播 (0消耗)</span>
+      </h2>
+      <div class="row">
+        <button class="green" onclick="setLive('live')">▶️ 开始直播</button>
+        <button class="amber" onclick="setLive('paused')">⏸️ 暂停AI对话</button>
+        <button class="red" onclick="setLive('stopped')">⏹️ 彻底下播 (0消耗)</button>
+        <button id="btn-mic-takeover" class="dark" onclick="toggleHumanMicTakeover()">🎙️ 真人开麦接管：关</button>
+        <button id="btn-auto-mute-mic" class="teal" onclick="toggleAutoMuteMic()" title="开播且未点真人接管时，自动把 Windows 物理麦克风硬件静音，彻底防直播伴侣误收环境音">🔇 非接管自动闭麦：开</button>
+        <span id="mic-hw-badge" class="badge ok">🎙️ 物理麦：未静音</span>
+        <span id="call-counter" class="badge warn">📊 调API：0 次</span>
+      </div>
+      <div class="row">
+        <select id="manual-char" style="min-width:138px;"></select>
+        <input id="manual-speak-text" style="flex:1" placeholder="输入或用麦克风语音转文字，让角色 P0 最高优立刻开口回应..." onkeydown="if(event.key==='Enter')sendManualSpeak()" />
+        <button id="btn-voice-stt" class="indigo" onclick="toggleBrowserSpeechToText()">🎤 麦转字</button>
+        <button class="red" onclick="sendManualSpeak()">📢 立即插麦</button>
+      </div>
+      <div class="row">
+        <select id="vt-char" style="min-width:138px;"></select>
+        <select id="vt-emo">
+          <option value="happy">😄 欢快开心</option>
+          <option value="talking">💬 自然聊天</option>
+          <option value="angry">💢 奶凶吐槽</option>
+          <option value="shy">💗 温柔害羞</option>
+        </select>
+        <button class="amber" onclick="testVoice()">🎵 单独试听音色 (绝不串音)</button>
+        <select id="sel-playback-rate" onchange="changePlaybackRate(this.value)" title="实时调节 AI 说话语速（保音调不降调，导播台与 OBS 舞台即时生效）">
+          <option value="0.76">🐢 语速：0.76x (超慢软糯)</option>
+          <option value="0.82">🐢 语速：0.82x (偏慢温柔)</option>
+          <option value="0.88" selected>✨ 语速：0.88x (适中偏慢·默认)</option>
+          <option value="0.94">🌿 语速：0.94x (轻柔自然)</option>
+          <option value="1.00">▶️ 语速：1.00x (标准原速)</option>
+          <option value="1.08">⚡ 语速：1.08x (轻快)</option>
+        </select>
+        <button id="btn-silence" class="slate" onclick="toggleSilence()">🌿 沉默留白：开</button>
+      </div>
+    </div>
+
+    <!-- 2. 互动玩法中控（红蓝 PK 辩论 / 观众出题 3 人吐槽 / 小心心强制换人 / 界面挂件） -->
+    <div class="card interact-card">
+      <h2>
+        <span>🎮 2. 互动玩法中控（PK 辩论投票 · 观众出题吐槽 · 小心心强制换人）</span>
+        <span id="mode-badge" class="badge ok">✨ 常规互动中</span>
+      </h2>
+      <div class="row">
+        <button class="indigo" onclick="setStageCount(1)">🎙️ 1人独播</button>
+        <button class="teal" onclick="setStageCount(2)">👯 2人双播</button>
+        <button class="green" onclick="setStageCount(3)">☀️ 3人闲聊</button>
+        <button id="btn-pk-toggle" class="red" onclick="togglePKMode()">⚔️ 开启红蓝 PK 辩论</button>
+        <button class="amber" onclick="testVote(1)">🔴 投红方(1)</button>
+        <button class="indigo" onclick="testVote(2)">🔵 投蓝方(2)</button>
+      </div>
+      <div class="row">
+        <input id="aud-topic-user" style="width:96px" value="热心观众" />
+        <input id="aud-topic-text" style="flex:1" placeholder="模拟观众出题（3人从左到右吐槽完后第3人自动退场）..." onkeydown="if(event.key==='Enter')triggerAudienceTopic()" />
+        <button class="pink" onclick="triggerAudienceTopic()">🎬 触发观众出题</button>
+      </div>
+      <div class="row">
+        <button class="dark" onclick="setDeskProp('none')">🧹 撤掉道具</button>
+        <button class="amber" onclick="setDeskProp('tea')">🍰 下午茶</button>
+        <button class="pink" onclick="setDeskProp('mic')">🎙️ 独播台</button>
+        <button id="btn-guide" class="green" onclick="toggleGuideCard()">📋 互动牌：开</button>
+        <button class="slate" onclick="drainEnergyDemo()">⚡ 测能量轮换</button>
+      </div>
+    </div>
+
+    <!-- 3. 舞台在场 · 小屋休息队列（顺序轮流） · 独立角色记忆库 -->
+    <div class="card">
+      <h2>
+        <span>🛋️ 3. 舞台在场、小屋休息队列（轮流出场）与 8 位角色独立记忆库</span>
+        <span id="roster-badge" class="badge info">在场 / 休息中</span>
+      </h2>
+      <div class="grid-stage" id="stage-box"></div>
+      <div class="tip" style="margin:9px 0 6px;">
+        🛋️ <b>小屋休息队列（按顺序依次轮流出场 · 送 1 个小心心可强制替换上场并永久记入记忆库）</b>：
+      </div>
+      <div class="grid-bench" id="bench-box"></div>
+    </div>
+
+    <!-- 4. 弹幕测试、抖音连接与大模型配置 -->
+    <div class="card">
+      <h2>
+        <span>⚙️ 4. 弹幕互动测试、抖音连接与大模型配置</span>
+        <span id="dy-badge" class="badge warn">未连抖音</span>
+      </h2>
+      <div class="row">
+        <input id="sim-user" style="width:96px" value="星光老粉" />
+        <input id="sim-text" style="flex:1" placeholder="模拟弹幕（支持 1/2 投票、出题：xxx、比心/哈哈/喊外号）..." onkeydown="if(event.key==='Enter')sendBarrage()" />
+        <button class="green" onclick="sendBarrage()">💬 发弹幕</button>
+        <button class="pink" onclick="testHeartGift()">💗 测送1个小心心(强换人+写记忆)</button>
+      </div>
+      <div class="row">
+        <input id="dy-ws" style="width:270px" value="auto" placeholder="填 auto 自动连直播伴侣，或粘贴房间号/链接" />
+        <button class="green" onclick="toggleDY(true)">⚡ 自动连抖音弹幕+礼物</button>
+        <button class="slate" onclick="toggleDY(false)">断开</button>
+        <input id="base-url" style="width:155px" value="https://bbying.me/v1" />
+        <input id="api-key" type="password" style="flex:1;min-width:110px" placeholder="API Key (已配可留空)" />
+        <input id="model-name" style="width:135px" value="deepseek-v4.1-flash" />
+        <button class="green" onclick="saveLLM()">💾 保存</button>
+      </div>
+      <div id="dy-live-log" class="tip" style="margin-top:6px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:6px 10px;">
+        💡 <b>免装第三方软件直连方法</b>：抖音直播伴侣开播后，把你的网页直播间地址（如 <code>https://live.douyin.com/你的房间号</code>）或手机点分享复制的链接直接粘贴到上方输入框，点击「🔌 直连抖音弹幕+礼物」即可实时识别真实弹幕、PK投票(1/2)与小心心/礼物！
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-bar" id="toast"></div>
+
+  <script>
+    let previewAudio = null; // 仅用于点「单独试听音色」按钮，绝不监听全局 WS 播音防止双轨杂音！
+    let lastSnap = null;
+    let allPersonas = {};
+    let humanMicActive = false;
+    let speechRec = null;
+
+    const NICK_MAP = {
+      gpt: "龙宝 (白龙团长)",
+      deepseek: "鲸宝 (蓝鲸干饭王)",
+      claude: "葵葵 (向日葵小乖)",
+      gemini: "星喵 (星猫迷糊蛋)",
+      grok: "瓜瓜 (吃瓜小魔王)",
+      kimi: "月月 (月亮故事姬)",
+      qwen: "小桂花 (桂花小管家)",
+      zhipu: "班长 (贝雷小班长)",
+    };
+
+    function getNick(pid, fallback) {
+      return NICK_MAP[pid] || fallback || pid;
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      clearTimeout(window._dirToastTimer);
+      window._dirToastTimer = setTimeout(() => el.classList.remove("show"), 2600);
+    }
+
+    async function api(path, body) {
+      const r = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body || {}),
+      });
+      return r.json();
+    }
+
+    async function setLive(status) {
+      if (status !== "live" && previewAudio) {
+        try { previewAudio.pause(); previewAudio.currentTime = 0; } catch (_) {}
+      }
+      await api("/api/live_status", { status });
+      showToast(status === "live" ? "🟢 已正式开播！" : (status === "paused" ? "⏸️ 已暂停 AI 对话（已闭麦）" : "⏹️ 已彻底下播（0消耗，物理麦保持防误收静音）"));
+    }
+
+    async function toggleHumanMicTakeover() {
+      humanMicActive = !humanMicActive;
+      const btn = document.getElementById("btn-mic-takeover");
+      btn.className = humanMicActive ? "red" : "dark";
+      btn.textContent = humanMicActive ? "🎙️ 真人开麦中（物理麦已开·AI让麦）" : "🎙️ 真人开麦接管：关";
+      try {
+        const res = await fetch("/api/mic_takeover", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ active: humanMicActive }),
+        });
+        if (!res.ok) throw new Error("fallback");
+      } catch (_) {
+        await api("/api/live_status", { status: humanMicActive ? "paused" : "live" });
+      }
+      showToast(humanMicActive ? "🎙️ 物理麦克风已解除静音！请直接说话，AI 已安静让麦" : "🔇 已结束接管：物理麦克风已自动硬件静音，AI 恢复互动");
+    }
+
+    async function toggleAutoMuteMic() {
+      const next = !(lastSnap?.auto_mute_mic ?? true);
+      const r = await api("/api/auto_mute_mic", { enabled: next });
+      if (r.ok) {
+        showToast(next ? "🔇 已开启：开播非接管时自动硬件静音物理麦克风" : "🎙️ 已关闭自动闭麦，物理麦克风已恢复未静音");
+      }
+    }
+
+    function applyEcoPreview(eco) {
+      const ifr = document.getElementById("stage-preview-iframe");
+      const box = document.getElementById("eco-placeholder");
+      const btn = document.getElementById("btn-eco-preview");
+      if (!ifr || !box || !btn) return;
+      if (eco) {
+        if (ifr.getAttribute("src") !== "about:blank") ifr.setAttribute("src", "about:blank");
+        ifr.classList.add("eco-hidden");
+        box.classList.add("show");
+        btn.className = "green";
+        btn.textContent = "👁️ 恢复本地预览画面（当前省电模式）";
+      } else {
+        if (ifr.getAttribute("src") !== "/stage?mute_audio=1") ifr.setAttribute("src", "/stage?mute_audio=1");
+        ifr.classList.remove("eco-hidden");
+        box.classList.remove("show");
+        btn.className = "teal";
+        btn.textContent = "⚡ 省电：关闭本地预览（省50% GPU/CPU）";
+      }
+      try { localStorage.setItem("ai_garden_eco_preview", eco ? "1" : "0"); } catch (_) {}
+    }
+
+    function toggleEcoPreview(forceVal) {
+      const ifr = document.getElementById("stage-preview-iframe");
+      const isEco = ifr ? ifr.classList.contains("eco-hidden") : false;
+      const next = (typeof forceVal === "boolean") ? forceVal : !isEco;
+      applyEcoPreview(next);
+      showToast(next ? "⚡ 已开启省电模式：仅 OBS 单轨渲染，电脑立省约 50% 负载！" : "👁️ 已恢复导播台实时预览画面");
+    }
+
+    function toggleBrowserSpeechToText() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const btn = document.getElementById("btn-voice-stt");
+      if (!SR) return showToast("⚠️ 当前浏览器不支持原生语音转文字，建议使用 Chrome/Edge 或直接打字");
+      if (speechRec) {
+        try { speechRec.stop(); } catch (_) {}
+        speechRec = null;
+        btn.classList.remove("recording");
+        btn.textContent = "🎤 麦转字";
+        return;
+      }
+      const rec = new SR();
+      rec.lang = "zh-CN";
+      rec.interimResults = true;
+      rec.continuous = false;
+      speechRec = rec;
+      btn.classList.add("recording");
+      btn.textContent = "⏹️ 识别中...";
+      rec.onresult = (e) => {
+        const txt = Array.from(e.results).map(r => r[0].transcript).join("");
+        document.getElementById("manual-speak-text").value = txt;
+      };
+      rec.onend = () => {
+        speechRec = null;
+        btn.classList.remove("recording");
+        btn.textContent = "🎤 麦转字";
+      };
+      rec.onerror = () => {
+        speechRec = null;
+        btn.classList.remove("recording");
+        btn.textContent = "🎤 麦转字";
+        showToast("⚠️ 麦克风权限未开启或语音识别中断");
+      };
+      rec.start();
+    }
+
+    async function sendManualSpeak() {
+      const inp = document.getElementById("manual-speak-text");
+      const text = (inp.value || "").trim();
+      if (!text) return;
+      const pid = document.getElementById("manual-char").value || "";
+      const emo = document.getElementById("vt-emo").value || "happy";
+      const r = await api("/api/manual_speak", { persona_id: pid, text, emotion: emo });
+      if (r.ok) { inp.value = ""; showToast("📢 已插入 P0 最高优口播！"); }
+    }
+
+    async function changePlaybackRate(val) {
+      const rate = Number(val || 0.88);
+      const r = await api("/api/playback_rate", { rate });
+      if (r.ok) {
+        if (previewAudio && !previewAudio.paused) {
+          try { previewAudio.playbackRate = r.voice_playback_rate; } catch (_) {}
+        }
+        showToast(`🐢 全局语速已调为 ${r.voice_playback_rate}x（保持甜美音调不变，OBS 舞台已同步）！`);
+      }
+    }
+
+    async function testVoice() {
+      const pid = document.getElementById("vt-char").value;
+      const curRate = Number(document.getElementById("sel-playback-rate")?.value || lastSnap?.voice_playback_rate || 0.88);
+      showToast(`🎵 正在单独试听【${getNick(pid)}】(${curRate}x 柔和语速)...`);
+      const r = await api("/api/voice_test", { persona_id: pid, emotion: document.getElementById("vt-emo").value });
+      if (r.ok && r.audio_url) {
+        if (previewAudio) { try { previewAudio.pause(); } catch (_) {} }
+        previewAudio = new Audio(r.audio_url);
+        previewAudio.preservesPitch = true;
+        previewAudio.mozPreservesPitch = true;
+        previewAudio.webkitPreservesPitch = true;
+        previewAudio.playbackRate = Number(r.playback_rate || curRate || 0.88);
+        previewAudio.play().catch(() => {});
+      } else {
+        showToast("⚠️ 试听失败，请检查云端或本机 8766 状态");
+      }
+    }
+
+    async function toggleSilence() { await api("/api/toggle_silence"); }
+    async function setStageCount(count) {
+      const lead = document.getElementById("manual-char").value || "";
+      const r = await api("/api/set_stage_count", { count, lead_persona: lead });
+      if (r.ok) showToast(count === 1 ? "🎙️ 已切为 1 人正脸独播！" : `🏡 已切为 ${count} 位小伙伴同台！`);
+    }
+
+    async function togglePKMode() {
+      const active = !!lastSnap?.pk_state?.active;
+      try {
+        const res = await fetch(active ? "/api/pk/stop" : "/api/pk/start", {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}),
+        });
+        if (!res.ok) throw new Error("not ready");
+        showToast(active ? "🛑 已结束红蓝 PK 辩论！" : "⚔️ 已开启 2 人红蓝 PK 辩论（精力已冻结，发 1/2 实时投票！）");
+      } catch (_) {
+        showToast("💡 红蓝 PK 后端接口将由 Carbon 接入完成后生效！");
+      }
+    }
+
+    async function testVote(side) {
+      await api("/api/barrage", { user: "投票观众" + Math.floor(Math.random() * 90 + 10), text: String(side) });
+      showToast(side === 1 ? "🔴 已发送红方(1)投票弹幕！" : "🔵 已发送蓝方(2)投票弹幕！");
+    }
+
+    async function triggerAudienceTopic() {
+      const user = document.getElementById("aud-topic-user").value.trim() || "热心观众";
+      const topic = document.getElementById("aud-topic-text").value.trim();
+      if (!topic) return showToast("⚠️ 请先输入观众出的题目！");
+      try {
+        const res = await fetch("/api/audience_topic", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user, topic }),
+        });
+        if (!res.ok) throw new Error("fallback");
+        document.getElementById("aud-topic-text").value = "";
+        showToast("🎬 已触发观众出题：3 位宝宝将从左到右依次吐槽！");
+      } catch (_) {
+        await api("/api/barrage", { user, text: `出题：${topic}` });
+        document.getElementById("aud-topic-text").value = "";
+        showToast("🎬 已通过弹幕发送「出题」指令！");
+      }
+    }
+
+    async function setDeskProp(mode) {
+      const r = await api("/api/desk_prop", { mode });
+      if (r.ok) showToast(mode === "none" ? "🧹 已彻底撤掉前景道具！" : `✅ 已切换前景道具：${mode}`);
+    }
+    async function toggleGuideCard() {
+      const next = !(lastSnap?.show_guide_card ?? true);
+      const r = await api("/api/guide_card", { show: next });
+      if (r.ok) showToast(next ? "📋 已显示互动指南牌" : "📋 已隐藏互动指南牌");
+    }
+    async function drainEnergyDemo() {
+      const pid = document.getElementById("manual-char").value || "";
+      const r = await api("/api/drain_stamina", { persona_id: pid });
+      if (r.ok) showToast("⚡ 已将该角色精力调至 4%，即将按队列顺次轮换！");
+    }
+
+    function sendBarrage() {
+      const t = document.getElementById("sim-text").value.trim(); if (!t) return;
+      api("/api/barrage", { user: document.getElementById("sim-user").value || "星光老粉", text: t });
+      document.getElementById("sim-text").value = "";
+    }
+
+    async function testHeartGift() {
+      const user = document.getElementById("sim-user").value || "星光老粉";
+      const r = await api("/api/test_douyin_packet", {
+        Type: 5,
+        Data: { User: { Id: "heart_" + user, Nickname: user }, GiftId: 1001, GiftName: "小心心", DiamondCount: 1, GiftCount: 1, GroupId: String(Date.now()) },
+      });
+      if (r.ok) showToast(`💗 已模拟【${user}】送出 1 个小心心！`);
+    }
+
+    async function saveLLM() {
+      await api("/api/config", {
+        base_url: document.getElementById("base-url").value,
+        api_key: document.getElementById("api-key").value,
+        model: document.getElementById("model-name").value,
+        colab_url: lastSnap?.colab_url || "",
+        colab_tts_model: lastSnap?.colab_tts_model || "qwen3-tts-1.7b",
+        use_colab_tts: !!lastSnap?.use_colab_tts,
+        local_genie_url: lastSnap?.local_genie_url ?? "",
+        use_local_genie: !!lastSnap?.use_local_genie,
+      });
+      showToast("💾 配置已保存！");
+    }
+    async function toggleDY(enable) {
+      const target = document.getElementById("dy-ws").value.trim() || "auto";
+      const st = await api("/api/douyin", { enable, ws_url: target, room_id: target });
+      syncDY(st);
+      showToast(enable ? "⚡ 正在自动直连抖音直播间实时弹幕与礼物..." : "⏹️ 已断开抖音弹幕监听");
+    }
+
+    function escapeHtml(s) {
+      return String(s || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    function renderMemHtml(pid, memMap) {
+      const rec = memMap?.[pid];
+      if (!rec || !rec.fans || !rec.fans.length) return `<div class="mem-box">💭 记忆库：暂未记录小心心送礼恩人</div>`;
+      const items = rec.fans.slice(0, 5).map(f => `💗 ${escapeHtml(f.user)}(×${Number(f.hearts || 1)})`).join(" · ");
+      return `<div class="mem-box">💖 记住的老熟人：${items}</div>`;
+    }
+
+    function syncUI(snap) {
+      lastSnap = snap;
+      if (typeof snap.human_mic_active === "boolean") {
+        humanMicActive = snap.human_mic_active;
+        const mbtn = document.getElementById("btn-mic-takeover");
+        mbtn.className = humanMicActive ? "red" : "dark";
+        mbtn.textContent = humanMicActive ? "🎙️ 真人开麦中（物理麦已开·AI让麦）" : "🎙️ 真人开麦接管：关";
+      }
+      const amBtn = document.getElementById("btn-auto-mute-mic");
+      if (amBtn && typeof snap.auto_mute_mic === "boolean") {
+        amBtn.className = snap.auto_mute_mic ? "teal" : "slate";
+        amBtn.textContent = snap.auto_mute_mic ? "🔇 非接管自动闭麦：开" : "🎙️ 非接管自动闭麦：关";
+      }
+      const hwBadge = document.getElementById("mic-hw-badge");
+      if (hwBadge && typeof snap.physical_mic_muted === "boolean") {
+        hwBadge.className = snap.physical_mic_muted ? "badge info" : "badge ok";
+        hwBadge.textContent = snap.physical_mic_muted ? "🔇 物理麦：已硬件静音" : "🎙️ 物理麦：已开麦";
+      }
+      const counts = snap.voice_bank_counts || {};
+      const totalOffline = Object.values(counts).reduce((a, b) => a + (Number(b) || 0), 0);
+      document.getElementById("dir-vb-pill").textContent = `📦 离线语音库：${totalOffline} / 48 条`;
+
+      const lb = document.getElementById("live-badge");
+      if (snap.live_status === "live") { lb.className = "badge ok"; lb.textContent = "🟢 直播中"; }
+      else if (snap.live_status === "paused") { lb.className = "badge warn"; lb.textContent = "⏸️ 已暂停 (0消耗)"; }
+      else { lb.className = "badge stop"; lb.textContent = "⏹️ 已下播 (0消耗)"; }
+
+      document.getElementById("call-counter").textContent = `📊 调API：${snap.llm_calls || 0} 次`;
+      document.getElementById("btn-silence").textContent = snap.allow_silence ? "🌿 沉默留白：开" : "⚡ 紧凑连播";
+      if (snap.voice_playback_rate) {
+        const selR = document.getElementById("sel-playback-rate");
+        if (selR && document.activeElement !== selR) {
+          const vStr = Number(snap.voice_playback_rate).toFixed(2);
+          if (Array.from(selR.options).some(o => o.value === vStr)) selR.value = vStr;
+        }
+      }
+
+      const pkActive = !!snap.pk_state?.active;
+      const audActive = !!snap.audience_topic_state?.active;
+      const mb = document.getElementById("mode-badge");
+      if (pkActive) { mb.className = "badge stop"; mb.textContent = "⚔️ 红蓝 PK 中（精力已冻结）"; }
+      else if (audActive) { mb.className = "badge warn"; mb.textContent = "🎬 观众出题 3 人吐槽中"; }
+      else { mb.className = "badge ok"; mb.textContent = "✨ 常规互动中"; }
+
+      const pkBtn = document.getElementById("btn-pk-toggle");
+      pkBtn.textContent = pkActive ? "🛑 结束红蓝 PK" : "⚔️ 开启红蓝 PK 辩论";
+      pkBtn.className = pkActive ? "dark" : "red";
+
+      const gb = document.getElementById("btn-guide");
+      const gOn = snap.show_guide_card !== false;
+      gb.className = gOn ? "green" : "slate";
+      gb.textContent = gOn ? "📋 互动牌：开" : "📋 互动牌：关";
+
+      const stage = snap.stage || [];
+      const bench = snap.bench || [];
+      const memMap = snap.memory_summary || {};
+      document.getElementById("roster-badge").textContent = `台上 ${stage.length} 位 · 小屋休息 ${bench.length} 位`;
+
+      document.getElementById("stage-box").innerHTML = stage.map((s) => {
+        const pid = s.persona.id;
+        const st = s.state || {};
+        return `
+          <div class="mini-slot" style="border-color:${s.persona.color}66">
+            <div class="mini-slot-head">
+              <img src="/static/avatars_coop/${pid}.png?v=14" onerror="this.src='${s.persona.avatar_png}'" style="border-color:${s.persona.color}" />
+              <h4 style="color:${s.persona.color}">${s.persona.prop_emoji} ${getNick(pid, s.persona.internal_label)}</h4>
+            </div>
+            <div class="sub">⚡ 精力：${Math.round(st.stamina ?? 100)}% ${pkActive ? '（⏸️PK冻结）' : ''}</div>
+            ${renderMemHtml(pid, memMap)}
+            <button class="pink" style="width:100%" onclick="api('/api/gift',{target:'${pid}',power:25,user:document.getElementById('sim-user').value||'星光老粉',gift_name:'小心心'})">💗 给她送小心心</button>
+          </div>
+        `;
+      }).join("");
+
+      document.getElementById("bench-box").innerHTML = bench.map((b, i) => `
+        <div class="mini-slot">
+          <div class="mini-slot-head">
+            <img src="/static/avatars_coop/${b.id}.png?v=14" onerror="this.src='${b.avatar_png}'" style="border-color:${b.color}" />
+            <h4 style="color:${b.color}">${b.prop_emoji} ${getNick(b.id, b.internal_label)}</h4>
+            <span class="order-tag ${i === 0 ? 'next' : ''}">${i === 0 ? '下一位出场' : '第' + (i + 1) + '顺位'}</span>
+          </div>
+          ${renderMemHtml(b.id, memMap)}
+          <button class="indigo" style="width:100%" onclick="api('/api/summon',{incoming:'${b.id}',user:document.getElementById('sim-user').value||'导播'})">🚪 强制替换上场</button>
+        </div>
+      `).join("");
+
+      const mSel = document.getElementById("manual-char");
+      const prev = mSel.value;
+      mSel.innerHTML = stage.map(s => `<option value="${s.persona.id}">${s.persona.prop_emoji} ${getNick(s.persona.id)}</option>`).join("");
+      if (stage.some(s => s.persona.id === prev)) mSel.value = prev;
+    }
+
+    function syncDY(dy) {
+      if (!dy) return;
+      const el = document.getElementById("dy-badge");
+      const st = dy.stats ? ` (弹幕:${dy.stats.chat_count || 0} 礼:${dy.stats.gift_count || 0} 进场:${dy.stats.enter_count || 0})` : "";
+      const roomTag = dy.anchor_name ? `${dy.anchor_name}` : (dy.live_id || "");
+      el.className = dy.connected ? "badge ok" : (dy.enabled ? "badge info" : "badge warn");
+      el.textContent = (dy.connected ? `✅ 已连抖音${roomTag ? '·' + roomTag : ''}` : (dy.enabled ? "🔄 正在连接抖音..." : "未连抖音")) + st;
+
+      const inp = document.getElementById("dy-ws");
+      if (inp && document.activeElement !== inp && !inp.value && dy.ws_url && !dy.ws_url.startsWith("ws://127.0.0.1:8888")) {
+        inp.value = dy.ws_url;
+      }
+      const logEl = document.getElementById("dy-live-log");
+      if (logEl) {
+        if (dy.last_error) {
+          logEl.innerHTML = `⚠️ <b>抖音连接状态</b>：${escapeHtml(dy.last_error)}`;
+        } else if (dy.recent_events && dy.recent_events.length) {
+          logEl.innerHTML = `📡 <b>实时抓到的抖音消息</b>：` + dy.recent_events.slice(-3).map(escapeHtml).join(" &nbsp;|&nbsp; ");
+        } else if (dy.connected) {
+          logEl.innerHTML = `✅ <b>已直连抖音房间 ${escapeHtml(dy.live_id || dy.room_id || '')}</b>（真实弹幕、PK投票 1/2、小心心与礼物实时监听中！）`;
+        }
+      }
+    }
+
+    async function boot() {
+      try {
+        if (localStorage.getItem("ai_garden_eco_preview") === "1") applyEcoPreview(true);
+      } catch (_) {}
+      const m = await (await fetch("/api/meta")).json();
+      allPersonas = m.personas || {};
+      document.getElementById("vt-char").innerHTML = Object.values(allPersonas).map(p =>
+        `<option value="${p.id}" ${p.id === "deepseek" ? "selected" : ""}>${p.prop_emoji} ${getNick(p.id, p.internal_label)}</option>`
+      ).join("");
+      document.getElementById("base-url").value = m.snapshot.llm_base_url || "https://bbying.me/v1";
+      document.getElementById("model-name").value = m.snapshot.llm_model || "deepseek-v4.1-flash";
+      syncUI(m.snapshot);
+      syncDY(m.douyin);
+
+      const ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`);
+      ws.onmessage = (ev) => {
+        const msg = JSON.parse(ev.data);
+        if (msg.type === "state_sync") syncUI(msg);
+        if (msg.type === "douyin_status") syncDY(msg);
+        // 关键修复：绝不在导播台监听 speak 播放音频，彻底消除与 /stage 叠加出「其他声音/重音」的 Bug！
+      };
+      ws.onclose = () => setTimeout(() => location.reload(), 3000);
+    }
+    boot();
+  </script>
+</body>
+</html>

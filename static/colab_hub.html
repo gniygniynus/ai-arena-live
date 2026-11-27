@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Universal Colab AI Compute Hub · 全项目通用多模态算力中枢 (:8768)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: linear-gradient(145deg, #f1f5f9 0%, #f8fafc 50%, #eef2ff 100%);
+      color: #0f172a;
+      font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+      min-height: 100vh;
+      padding: 18px 22px 48px;
+    }
+    .wrap { max-width: 1420px; margin: 0 auto; }
+    .topbar {
+      background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 20px;
+      padding: 14px 20px; display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 12px; box-shadow: 0 8px 24px rgba(15,23,42,0.05); margin-bottom: 14px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .logo {
+      width: 44px; height: 44px; border-radius: 14px;
+      background: linear-gradient(135deg, #2563eb, #7c3aed);
+      color: #fff; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 900;
+    }
+    .brand h1 { font-size: 19px; font-weight: 900; color: #0f172a; }
+    .brand p { font-size: 12.5px; color: #64748b; margin-top: 2px; }
+    .ext-links { display: flex; gap: 8px; flex-wrap: wrap; }
+    .ext-links a {
+      text-decoration: none; font-size: 12.5px; font-weight: 800; padding: 8px 14px;
+      border-radius: 999px; border: 1.5px solid #cbd5e1; background: #f8fafc; color: #1e293b;
+    }
+    .ext-links a:hover { border-color: #2563eb; color: #2563eb; }
+
+    .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .tab-btn {
+      border: 1.5px solid #cbd5e1; background: #fff; color: #334155;
+      padding: 10px 18px; border-radius: 14px; font-size: 13.5px; font-weight: 900; cursor: pointer;
+    }
+    .tab-btn.active {
+      background: linear-gradient(135deg, #2563eb, #4f46e5); color: #fff; border-color: transparent;
+      box-shadow: 0 6px 18px rgba(37,99,235,0.25);
+    }
+    .pane { display: none; }
+    .pane.active { display: block; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    @media (max-width: 1050px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+    .card {
+      background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 18px;
+      padding: 18px 20px; box-shadow: 0 6px 20px rgba(15,23,42,0.04); margin-bottom: 16px;
+    }
+    .card h2 { font-size: 16px; font-weight: 900; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+    .sub { font-size: 12.5px; color: #64748b; line-height: 1.55; margin-bottom: 10px; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+    input, select, textarea {
+      background: #f8fafc; border: 1.5px solid #cbd5e1; color: #0f172a;
+      padding: 9px 12px; border-radius: 11px; font-size: 13px; font-family: inherit; outline: none;
+    }
+    input:focus, select:focus, textarea:focus { border-color: #2563eb; background: #fff; }
+    button {
+      border: none; border-radius: 11px; padding: 9px 15px; font-size: 13px; font-weight: 800;
+      cursor: pointer; color: #fff; background: #2563eb; transition: filter 0.15s;
+    }
+    button:hover { filter: brightness(1.07); }
+    button.green { background: #16a34a; }
+    button.amber { background: #d97706; }
+    button.purple { background: #7c3aed; }
+    button.pink { background: #db2777; }
+    button.slate { background: #475569; }
+    .pill { font-size: 12px; font-weight: 800; padding: 4px 11px; border-radius: 999px; background: #e2e8f0; color: #334155; }
+    .pill.ok { background: #dcfce7; color: #15803d; }
+    .pill.warn { background: #fef3c7; color: #b45309; }
+    pre.code {
+      background: #0f172a; color: #e2e8f0; padding: 12px 14px; border-radius: 12px;
+      font-family: Consolas, monospace; font-size: 12px; overflow-x: auto; line-height: 1.55;
+    }
+    .preview-box {
+      background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 14px;
+      min-height: 220px; display: flex; align-items: center; justify-content: center; padding: 12px; text-align: center;
+    }
+    .preview-box img, .preview-box video { max-width: 100%; max-height: 360px; border-radius: 10px; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">⚡</div>
+      <div>
+        <h1>Universal Colab AI Compute Hub · 全项目通用多模态算力中枢</h1>
+        <p>独立服务端口 <b>:8768</b> · 统一向本地生图/修图软件、AI 视频项目、直播系统、B站工坊提供 GPU 算力 API</p>
+      </div>
+    </div>
+    <div class="ext-links">
+      <span id="topCloudBadge" class="pill warn">⏳ 检测 Colab 隧道...</span>
+      <a href="http://127.0.0.1:8765/director" target="_blank">🌻 连接独立直播面板 (:8765) ↗</a>
+      <a href="http://127.0.0.1:8769" target="_blank">📺 连接独立B站视频面板 (:8769) ↗</a>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('hub', this)">🌐 1. 机器隧道 & Google 代理登录</button>
+    <button class="tab-btn" onclick="switchTab('voices', this)">🎙️ 2. 角色声线自主生成工坊</button>
+    <button class="tab-btn" onclick="switchTab('apps', this)">🔌 3. 任意项目通用接入向导 (生图/生视频/TTS)</button>
+    <button class="tab-btn" onclick="switchTab('image', this)">🖼️ 4. 图像生成 & 修图抠图工坊</button>
+    <button class="tab-btn" onclick="switchTab('video', this)">🎬 5. AI 视频生成工坊 (文生视频/图生视频)</button>
+  </div>
+
+  <!-- Tab 1: 机器连接与代理修复 -->
+  <div id="pane-hub" class="pane active">
+    <div class="grid-2">
+      <div class="card">
+        <h2><span>🔑 Google 官方授权 & 代理防超时诊断</span><span id="cuBadge" class="pill">未登录</span></h2>
+        <p class="sub">已自动读取 Windows 系统代理注册表并过滤失效端口，彻底解决 <code>ConnectTimeout</code>！</p>
+        <div class="row">
+          <input id="proxyInput" style="flex:1;" placeholder="留空自动识别系统代理 (如 http://127.0.0.1:7897)" />
+          <button onclick="testGoogleProxy()">⚡ 一键测速连通 Google</button>
+        </div>
+        <div id="proxyResult" class="sub" style="color:#1d4ed8;font-weight:700;">正在检测本机生效代理...</div>
+        <div class="row" style="margin-top:8px;">
+          <input type="file" id="oauthJsonFile" accept=".json" style="display:none;" onchange="uploadOAuthJson(this)" />
+          <button class="slate" onclick="document.getElementById('oauthJsonFile').click()">📂 导入 OAuth JSON</button>
+          <button class="green" onclick="startGoogleLogin()">🔑 Google 浏览器授权登录</button>
+          <button class="amber" onclick="refreshCU()">🔄 刷新 CU 余额</button>
+        </div>
+        <div id="oauthStatusMsg" class="sub" style="margin-top:6px;color:#0f172a;font-weight:700;"></div>
+        <div id="oauthDirectBox" style="display:none;margin-top:8px;padding:10px 12px;background:#eff6ff;border:1.5px solid #60a5fa;border-radius:10px;font-size:12.5px;">
+          🌐 <b>已生成 Google 官方授权地址：</b>若浏览器拦截了新窗口，请直接点击右侧打开 ➔
+          <a id="oauthDirectLink" href="#" target="_blank" style="font-weight:900;color:#1d4ed8;text-decoration:underline;">点此前往 Google 授权登录 ↗</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span>🚀 Colab 多模态 GPU 隧道连接</span><span id="gpuTierBadge" class="pill">待连接</span></h2>
+        <p class="sub">填入 Colab 运行 <code>cloud_studio_server.py (v8)</code> 暴露的 Cloudflare 公网隧道地址，所有接入项目即刻共享显存！</p>
+        <div class="row">
+          <input id="colabUrlInput" style="flex:1;" placeholder="https://xxxx.trycloudflare.com" />
+        </div>
+        <div class="row">
+          <input id="colabTokInput" style="flex:1;" placeholder="隧道访问 Token (可选)" />
+          <button class="green" onclick="saveColabTunnel()">💾 保存并连接 GPU 隧道</button>
+          <button class="purple" onclick="triggerRecover()">🛠️ 远程自愈</button>
+        </div>
+        <div id="gpuStatsBox" class="sub" style="background:#f8fafc;padding:10px 12px;border-radius:10px;border:1px solid #e2e8f0;">
+          GPU 状态：等待探测...
+        </div>
+        <div class="row" style="margin-top:6px;">
+          <span style="font-size:12px;color:#64748b;font-weight:700;">显存释放调控：</span>
+          <button class="slate" style="padding:5px 10px;font-size:12px;" onclick="unloadSlot('image')">释放生图模型</button>
+          <button class="slate" style="padding:5px 10px;font-size:12px;" onclick="unloadSlot('video')">释放视频模型</button>
+          <button class="slate" style="padding:5px 10px;font-size:12px;" onclick="unloadSlot('all')">清空闲置显存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 2: 角色声线自主生成工坊 (开源用户自行生成专属声线) -->
+  <div id="pane-voices" class="pane">
+    <div class="card">
+      <h2>
+        <span>🎙️ 角色声线自主生成与克隆工坊（开源仓库不预置私人声线，由每位用户一键自主生成！）</span>
+        <div style="display:flex;gap:8px;">
+          <button class="green" onclick="generateLocalVoicePack(false)">⚡ 免显卡一键生成全套基础声线库</button>
+          <button class="amber" onclick="generateLocalVoicePack(true)">🔄 强制重新生成覆盖</button>
+        </div>
+      </h2>
+      <p class="sub">新克隆项目的用户可先点右上角<b>「⚡ 免显卡一键生成全套基础声线库」</b>15 秒完成初始化；连接自己的 Colab GPU 后，也可在下方修改音色描述词调用 <code>Qwen3-TTS-1.7B-VoiceDesign</code> 捏制独一无二的专属音色！</p>
+      <div id="voiceGenStatus" class="sub" style="font-weight:800;color:#15803d;"></div>
+      <div id="voicesWorkshopGrid" class="grid-2" style="margin-top:10px;"></div>
+    </div>
+  </div>
+
+  <!-- Tab 3: 多项目通用接入中心 -->
+  <div id="pane-apps" class="pane">
+    <div class="card">
+      <h2><span>🔌 已接入与预置项目矩阵（任何本地或远程项目均可零改动接入）</span><button class="green" onclick="registerNewApp()">➕ 注册新项目接入凭证</button></h2>
+      <p class="sub">本算力中枢完全兼容 OpenAI 标准格式与多模态扩展协议，跨域 (CORS) 已全放开。在你的<b>本地做图/修图软件</b>或<b>视频项目</b>中直接填入 Base URL：<code>http://127.0.0.1:8768/v1</code> 即可！</p>
+      <div id="appsGrid" class="grid-3" style="margin-top:12px;"></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h2>🎨 外部「本地生成 & 修图项目」直连示例 (Python / JS 通用)</h2>
+        <pre class="code"># 1. 文生图 (兼容标准 OpenAI SDK / 任意生图前端)
+POST http://127.0.0.1:8768/v1/images/generations
+Header: X-App-Id: my_photo_app
+{
+  "model": "auto",        // 自动优选 FLUX.1 / SDXL
+  "prompt": "阳光庭院里的可爱二次元少女，吉卜力光影，4K超清",
+  "size": "1024x1024",
+  "num_inference_steps": 4
+}
+
+# 2. 图生图重绘 / 透明抠图 / 4K 超分放大
+POST http://127.0.0.1:8768/v1/images/edits    (form-data: image, prompt, strength)
+POST http://127.0.0.1:8768/v1/images/matting  (form-data: file -> 返回透明 PNG)
+POST http://127.0.0.1:8768/v1/images/upscale  (form-data: file, scale=2|4)</pre>
+      </div>
+      <div class="card">
+        <h2>🎬 外部「AI 生成视频 (T2V / 图生视频 I2V)」直连示例</h2>
+        <pre class="code"># 支持纯文本生成视频 (Wan2.1)，或把你做图项目生成的图片转成动态视频 (LTX I2V)！
+POST http://127.0.0.1:8768/v1/videos/generations
+Header: X-App-Id: my_video_app
+{
+  "prompt": "微风吹动少女发丝与樱花飘落，镜头缓慢推进，电影感",
+  "image_b64": "",        // 留空=文生视频；传入本地图片的 base64=图生视频！
+  "width": 832, "height": 480, "num_frames": 49, "fps": 16
+}
+
+# 查询进度与下载 MP4 成片
+GET  http://127.0.0.1:8768/v1/videos/tasks/{task_id}
+GET  http://127.0.0.1:8768/v1/videos/tasks/{task_id}/content</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 3: 图像生成与修图工作台 -->
+  <div id="pane-image" class="pane">
+    <div class="grid-2">
+      <div class="card">
+        <h2>🖼️ 文生图 / 图生图修图 / 透明抠图 / 高清放大在线测试</h2>
+        <div class="row">
+          <input id="imgPrompt" style="flex:1;" value="Sunlight pastoral courtyard, cute chibi anime girl, warm soft lighting, masterpiece" placeholder="输入生图或修图提示词..." />
+        </div>
+        <div class="row">
+          <select id="imgSize">
+            <option value="1024x1024">1024×1024 (方图)</option>
+            <option value="1280x720">1280×720 (16:9 横版封面)</option>
+            <option value="720x1280">720×1280 (9:16 竖版壁纸)</option>
+          </select>
+          <button onclick="runTxt2Img()">🎨 Colab 文生图</button>
+        </div>
+        <hr style="border:none;border-top:1px solid #e2e8f0;margin:12px 0;" />
+        <p class="sub"><b>本地图片精修处理</b>（上传一张本地图片测试图生图、BiRefNet 抠图或无损超分放大）：</p>
+        <div class="row">
+          <input type="file" id="editImgFile" accept="image/*" />
+        </div>
+        <div class="row">
+          <button class="purple" onclick="runImgEdit()">✨ 图生图重绘</button>
+          <button class="pink" onclick="runMatting()">✂️ BiRefNet 透明抠图</button>
+          <button class="green" onclick="runUpscale(2)">🔍 2x 超清放大 (支持离线)</button>
+        </div>
+        <div id="imgStatus" class="sub" style="margin-top:8px;font-weight:700;color:#2563eb;">准备就绪</div>
+      </div>
+
+      <div class="card">
+        <h2>🖼️ 输出画布预览</h2>
+        <div id="imgPreview" class="preview-box"><span style="color:#94a3b8;">生成或精修后的图片将在此实时展示</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 4: AI 视频生成工坊 -->
+  <div id="pane-video" class="pane">
+    <div class="grid-2">
+      <div class="card">
+        <h2>🎬 AI 视频生成 (Wan2.1 文生视频 & LTX 图生视频)</h2>
+        <p class="sub">可选上传一张首帧图（例如从你的本地做图项目导出的图片），让 Colab GPU 将静态画作变成流畅动态视频！</p>
+        <div class="row">
+          <textarea id="vidPrompt" rows="3" style="width:100%;">Gentle breeze blowing cherry blossom petals in a sunny wooden courtyard, anime girl blinking and smiling happily, smooth animation</textarea>
+        </div>
+        <div class="row">
+          <label style="font-size:12.5px;font-weight:800;">首帧参考图 (可选，选图即为图生视频 I2V)：</label>
+          <input type="file" id="vidInitImg" accept="image/*" />
+        </div>
+        <div class="row">
+          <select id="vidRes">
+            <option value="832x480">832×480 (16:9 横屏流畅)</option>
+            <option value="480x832">480×832 (9:16 竖屏动态)</option>
+          </select>
+          <button class="pink" onclick="startVideoGen()">🎬 提交 Colab 生成视频</button>
+        </div>
+        <div id="vidStatus" class="sub" style="margin-top:8px;font-weight:700;color:#db2777;">等待提交任务...</div>
+      </div>
+
+      <div class="card">
+        <h2>🎬 生成视频预览</h2>
+        <div id="vidPreview" class="preview-box"><span style="color:#94a3b8;">生成的 MP4 视频完成后将自动拉回本地并在此播放</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchTab(id, btn) {
+  document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('pane-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+async function loadDashboard() {
+  try {
+    const r = await fetch('/api/hub/dashboard');
+    const d = await r.json();
+    const acc = d.account || {};
+    const ch = d.cloud_health || {};
+    const cu = d.cu_info || {};
+
+    if (acc.detected_proxy) {
+      document.getElementById('proxyResult').textContent = '当前自动锁定可用系统代理：' + acc.detected_proxy;
+    }
+    if (acc.proxy_url && !document.getElementById('proxyInput').value) {
+      document.getElementById('proxyInput').value = acc.proxy_url;
+    }
+    if (d.colab_url && !document.getElementById('colabUrlInput').value) {
+      document.getElementById('colabUrlInput').value = d.colab_url;
+    }
+
+    document.getElementById('cuBadge').textContent = acc.google_email ? `${acc.google_email} (${cu.cu_balance ?? '-'} CU)` : '未登录 Google';
+    document.getElementById('cuBadge').className = 'pill ' + (acc.google_email ? 'ok' : '');
+    const oMsg = document.getElementById('oauthStatusMsg');
+    if (oMsg) {
+      if (acc.has_oauth_token) {
+        oMsg.textContent = `✅ 已授权登录 Google 账号：${acc.google_email || '已连接'}`;
+        oMsg.style.color = '#15803d';
+      } else if (acc.has_oauth_client) {
+        oMsg.textContent = '🟢 已检测到 Google OAuth 客户端凭据，点击上方绿色「🔑 Google 浏览器授权登录」即可直接跳转授权！';
+        oMsg.style.color = '#1d4ed8';
+      } else {
+        oMsg.textContent = '⚪ 首次使用请先点击「📂 导入 OAuth JSON」上传 Google OAuth 桌面客户端凭据文件';
+        oMsg.style.color = '#b45309';
+      }
+    }
+
+    const vList = (d.voice_status || {}).personas || [];
+    const vGrid = document.getElementById('voicesWorkshopGrid');
+    if (vGrid && vList.length) {
+      vGrid.innerHTML = vList.map(v => `
+        <div style="border:1.5px solid #e2e8f0;border-radius:14px;padding:14px;background:#f8fafc;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <b style="font-size:14px;">${v.label || v.name} (<code>${v.id}</code>)</b>
+            <span class="pill ${v.has_ref ? 'ok' : 'warn'}">${v.has_ref ? ('已生成 · 词库 ' + v.bank_count + ' 条') : '待自主生成'}</span>
+          </div>
+          ${v.ref_url ? `<audio controls preload="none" src="${v.ref_url}?t=${Date.now()}" style="width:100%;height:34px;margin-bottom:8px;"></audio>` : ''}
+          <textarea id="vprompt-${v.id}" rows="2" style="width:100%;font-size:12px;margin-bottom:8px;">${v.prompt || ''}</textarea>
+          <div style="display:flex;gap:8px;">
+            <button class="purple" style="flex:1;padding:7px 10px;font-size:12px;" onclick="designCloudVoice('${v.id}')">✨ 用 Colab 1.7B 捏制专属声线</button>
+            <button class="slate" style="padding:7px 10px;font-size:12px;" onclick="generateSingleLocalVoice('${v.id}')">⚡ 本地快速生成</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    const topB = document.getElementById('topCloudBadge');
+    if (ch.connected) {
+      topB.textContent = `🟢 Colab GPU 已连接 (${(ch.gpu||{}).gpu_name || 'GPU'})`;
+      topB.className = 'pill ok';
+      const g = ch.gpu || {};
+      document.getElementById('gpuTierBadge').textContent = `${g.vram_used_gb || 0} / ${g.vram_total_gb || 0} GB VRAM`;
+      document.getElementById('gpuTierBadge').className = 'pill ok';
+      document.getElementById('gpuStatsBox').innerHTML =
+        `<b>GPU 型号：</b>${g.gpu_name || '-'} &nbsp;|&nbsp; <b>显存：</b>${g.vram_used_gb || 0}GB / ${g.vram_total_gb || 0}GB &nbsp;|&nbsp; <b>已驻留模型：</b>${(ch.warm_models||[]).join(', ') || '按需懒加载'}`;
+    } else {
+      topB.textContent = '🟡 Colab 隧道未连接 (本地超分与语音兜底在线)';
+      topB.className = 'pill warn';
+      document.getElementById('gpuStatsBox').textContent = '当前尚未连接活跃 Colab GPU 隧道（可填入隧道 URL 保存连接）。';
+    }
+
+    const grid = document.getElementById('appsGrid');
+    grid.innerHTML = (d.connected_apps || []).map(a => `
+      <div style="border:1.5px solid #e2e8f0;border-radius:14px;padding:14px;background:#f8fafc;">
+        <div style="font-weight:900;font-size:14px;margin-bottom:6px;">${a.name}</div>
+        <div style="font-size:12px;color:#475569;margin-bottom:4px;">App ID: <code>${a.id}</code></div>
+        <div style="font-size:12px;color:#64748b;margin-bottom:6px;">接口: <code>${a.endpoint_hint}</code></div>
+        ${a.api_key ? `<div style="font-size:11.5px;color:#0369a1;word-break:break-all;margin-bottom:6px;">API Key: <code>${a.api_key}</code></div>` : ''}
+        <div style="font-size:12px;font-weight:800;color:#16a34a;">累计调用: ${a.calls || 0} 次 · 最近活跃: ${a.last_active || '-'}</div>
+      </div>
+    `).join('');
+  } catch (e) {}
+}
+
+async function testGoogleProxy() {
+  const px = document.getElementById('proxyInput').value.trim();
+  const el = document.getElementById('proxyResult');
+  el.textContent = '⏳ 正在通过本机代理实测连接 Google 授权服务器...';
+  const r = await fetch('/api/colab/test_proxy', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({proxy_url: px}) });
+  const d = await r.json();
+  el.textContent = (d.ok ? '✅ ' : '❌ ') + (d.message || d.error);
+  el.style.color = d.ok ? '#15803d' : '#dc2626';
+}
+
+async function uploadOAuthJson(inp) {
+  if (!inp.files[0]) return;
+  const fd = new FormData(); fd.append('file', inp.files[0]);
+  const r = await fetch('/api/colab/oauth/import_json', { method: 'POST', body: fd });
+  const d = await r.json();
+  alert(d.ok ? '✅ OAuth 客户端 JSON 导入成功！现在可点击右侧登录按钮' : ('❌ ' + d.error));
+}
+
+let googleOAuthTimer = null;
+async function startGoogleLogin() {
+  // 关键：在用户点击同步栈第一时间打开新标签页句柄，100% 杜绝浏览器弹窗拦截导致“点了没反应”！
+  let popWin = null;
+  try {
+    popWin = window.open('about:blank', '_blank');
+    if (popWin) {
+      popWin.document.write("<meta charset='utf-8'><body style='font-family:Microsoft YaHei,sans-serif;padding:48px;text-align:center;color:#334155;'><h2>⏳ 正在前往 Google 官方登录授权页面...</h2></body>");
+    }
+  } catch (e) {}
+
+  const px = document.getElementById('proxyInput').value.trim();
+  if (px) {
+    await fetch('/api/colab/account', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({proxy_url: px}) });
+  }
+  const r = await fetch('/api/colab/oauth/start', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({}) });
+  const d = await r.json();
+  if (!d.ok || !d.auth_url) {
+    if (popWin && !popWin.closed) popWin.close();
+    alert(d.error || '请先点击「导入 OAuth JSON」导入 Google 桌面客户端凭据文件');
+    return;
+  }
+
+  const box = document.getElementById('oauthDirectBox');
+  const lnk = document.getElementById('oauthDirectLink');
+  if (box && lnk) {
+    lnk.href = d.auth_url;
+    box.style.display = 'block';
+  }
+  if (popWin && !popWin.closed) {
+    popWin.location.href = d.auth_url;
+  } else {
+    window.location.href = d.auth_url;
+  }
+
+  clearInterval(googleOAuthTimer);
+  let tries = 0;
+  googleOAuthTimer = setInterval(async () => {
+    tries++;
+    if (tries > 40) { clearInterval(googleOAuthTimer); return; }
+    const sr = await fetch('/api/hub/dashboard').then(x => x.json()).catch(() => null);
+    if (sr && sr.account && sr.account.has_oauth_token) {
+      clearInterval(googleOAuthTimer);
+      if (box) box.style.display = 'none';
+      loadDashboard();
+    }
+  }, 2500);
+}
+
+window.addEventListener('message', (ev) => {
+  if (ev.data && ev.data.type === 'colab_oauth_ok') {
+    const box = document.getElementById('oauthDirectBox');
+    if (box) box.style.display = 'none';
+    loadDashboard();
+  }
+});
+
+async function generateLocalVoicePack(overwrite) {
+  const st = document.getElementById('voiceGenStatus');
+  st.textContent = '⏳ 正在为 8 位角色自主生成本地基础声线与常用语语音库，请稍候约 10~15 秒...';
+  const r = await fetch('/api/hub/voices/generate_local_pack', {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({overwrite})
+  });
+  const d = await r.json();
+  st.textContent = d.ok ? `✅ 自主生成完成！共生成 ${d.generated_clips} 条音频，直播间与视频工坊即刻可用！` : ('❌ ' + (d.error || '失败'));
+  loadDashboard();
+}
+
+async function generateSingleLocalVoice(cid) {
+  const st = document.getElementById('voiceGenStatus');
+  st.textContent = `⏳ 正在为 [${cid}] 重新生成本地基础声线...`;
+  const r = await fetch('/api/hub/voices/generate_local_pack', {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({character_id: cid, overwrite: true})
+  });
+  const d = await r.json();
+  st.textContent = d.ok ? `✅ [${cid}] 声线已生成完毕！` : ('❌ ' + (d.error || '失败'));
+  loadDashboard();
+}
+
+async function designCloudVoice(cid) {
+  const st = document.getElementById('voiceGenStatus');
+  const instruct = document.getElementById('vprompt-' + cid).value.trim();
+  st.textContent = `✨ 正在请求你的 Colab GPU 使用 Qwen3-TTS-1.7B 为 [${cid}] 捏制新声线...`;
+  const r = await fetch('/api/hub/voices/design_cloud/' + cid, {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({instruct})
+  });
+  const d = await r.json();
+  st.textContent = d.ok ? `🎉 [${cid}] GPU 专属声线捏制成功并已同步回本地！` : ('⚠️ ' + (d.error || '失败'));
+  loadDashboard();
+}
+
+async function refreshCU() {
+  await fetch('/api/colab/refresh_cu', { method: 'POST' });
+  loadDashboard();
+}
+
+async function saveColabTunnel() {
+  const colab_url = document.getElementById('colabUrlInput').value.trim();
+  const colab_token = document.getElementById('colabTokInput').value.trim();
+  await fetch('/api/hub/tunnel', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({colab_url, colab_token}) });
+  loadDashboard();
+}
+
+async function triggerRecover() {
+  const r = await fetch('/api/colab/recover', { method: 'POST' });
+  const d = await r.json();
+  alert(JSON.stringify(d));
+  loadDashboard();
+}
+
+async function unloadSlot(slot) {
+  const r = await fetch('/v1/models/unload', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({slot}) });
+  const d = await r.json();
+  if (!d.ok) alert(d.error || '操作失败');
+  loadDashboard();
+}
+
+async function registerNewApp() {
+  const name = prompt('请输入要接入此 Colab 算力面板的新项目名称（如：PixForge本地修图工坊）：');
+  if (!name) return;
+  const id = 'app_' + Date.now();
+  await fetch('/api/hub/apps/register', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({id, name}) });
+  loadDashboard();
+}
+
+async function runTxt2Img() {
+  const st = document.getElementById('imgStatus');
+  st.textContent = '🎨 正在请求 Colab GPU 生成高清图像...';
+  const r = await fetch('/v1/images/generations', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ prompt: document.getElementById('imgPrompt').value, size: document.getElementById('imgSize').value })
+  });
+  const d = await r.json();
+  if (d.data && d.data[0]) {
+    const src = d.data[0].url || ('data:image/png;base64,' + d.data[0].b64_json);
+    document.getElementById('imgPreview').innerHTML = `<img src="${src}" />`;
+    st.textContent = '✅ 生图完成！';
+  } else {
+    st.textContent = '⚠️ ' + (d.error || '失败');
+  }
+  loadDashboard();
+}
+
+async function runImgEdit() {
+  const f = document.getElementById('editImgFile').files[0];
+  if (!f) return alert('请先选择一张本地图片');
+  const st = document.getElementById('imgStatus');
+  st.textContent = '✨ 正在执行图生图重绘...';
+  const fd = new FormData(); fd.append('image', f); fd.append('prompt', document.getElementById('imgPrompt').value);
+  const r = await fetch('/v1/images/edits', { method: 'POST', body: fd });
+  const d = await r.json();
+  if (d.data && d.data[0]) {
+    const src = d.data[0].url || ('data:image/png;base64,' + d.data[0].b64_json);
+    document.getElementById('imgPreview').innerHTML = `<img src="${src}" />`;
+    st.textContent = '✅ 图生图完成！';
+  } else st.textContent = '⚠️ ' + (d.error || '失败');
+}
+
+async function runMatting() {
+  const f = document.getElementById('editImgFile').files[0];
+  if (!f) return alert('请先选择一张本地图片');
+  const st = document.getElementById('imgStatus');
+  st.textContent = '✂️ 正在调用 BiRefNet 透明抠图...';
+  const fd = new FormData(); fd.append('file', f);
+  const r = await fetch('/v1/images/matting', { method: 'POST', body: fd });
+  if (r.ok) {
+    const blob = await r.blob();
+    document.getElementById('imgPreview').innerHTML = `<img src="${URL.createObjectURL(blob)}" />`;
+    st.textContent = '✅ 透明抠图完成！';
+  } else {
+    const d = await r.json(); st.textContent = '⚠️ ' + (d.error || '失败');
+  }
+}
+
+async function runUpscale(scale) {
+  const f = document.getElementById('editImgFile').files[0];
+  if (!f) return alert('请先选择一张本地图片');
+  const st = document.getElementById('imgStatus');
+  st.textContent = `🔍 正在执行 ${scale}x 超清放大...`;
+  const fd = new FormData(); fd.append('file', f); fd.append('scale', scale);
+  const r = await fetch('/v1/images/upscale', { method: 'POST', body: fd });
+  if (r.ok) {
+    const eng = r.headers.get('X-Engine') || '';
+    const blob = await r.blob();
+    document.getElementById('imgPreview').innerHTML = `<img src="${URL.createObjectURL(blob)}" />`;
+    st.textContent = `✅ ${scale}x 超分放大完成（引擎：${eng}）！`;
+  }
+  loadDashboard();
+}
+
+async function startVideoGen() {
+  const st = document.getElementById('vidStatus');
+  const [w, h] = document.getElementById('vidRes').value.split('x').map(Number);
+  let image_b64 = '';
+  const f = document.getElementById('vidInitImg').files[0];
+  if (f) {
+    image_b64 = await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(f); });
+  }
+  st.textContent = '🚀 正在提交 AI 视频生成任务...';
+  const r = await fetch('/v1/videos/generations', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ prompt: document.getElementById('vidPrompt').value, image_b64, width: w, height: h })
+  });
+  const d = await r.json();
+  if (!d.ok) { st.textContent = '⚠️ ' + (d.error || '未连接 Colab'); return; }
+  pollVideoTask(d.task_id);
+}
+
+async function pollVideoTask(tid) {
+  const st = document.getElementById('vidStatus');
+  const r = await fetch('/v1/videos/tasks/' + tid);
+  const d = await r.json();
+  st.textContent = `[${d.progress || 0}%] ${d.message || d.status}`;
+  if (d.status === 'queued' || d.status === 'running') {
+    setTimeout(() => pollVideoTask(tid), 2500);
+  } else if (d.status === 'succeeded') {
+    const url = d.local_url || ('/v1/videos/tasks/' + tid + '/content');
+    document.getElementById('vidPreview').innerHTML = `<video src="${url}" controls autoplay loop></video>`;
+    loadDashboard();
+  }
+}
+
+loadDashboard();
+setInterval(loadDashboard, 8000);
+</script>
+</body>
+</html>

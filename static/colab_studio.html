@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Colab 机器 · 真模型声音克隆、本地零差距接力与防掉线自愈控制台 v7</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #f5f7fb;
+      color: #0f172a;
+      font-family: "Microsoft YaHei", "PingFang SC", system-ui, -apple-system, sans-serif;
+      padding: 20px 24px 64px;
+      max-width: 1320px;
+      margin: 0 auto;
+    }
+
+    /* 高度复刻高赞 Colab 机器面板顶部栏 */
+    .top-brand {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px; margin-bottom: 14px;
+    }
+    .brand-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .brand-left h1 { font-size: 26px; font-weight: 900; letter-spacing: -0.4px; }
+    .email-pill {
+      background: #dcfce7; color: #166534; font-size: 13px; font-weight: 800;
+      padding: 5px 13px; border-radius: 999px;
+    }
+
+    .nav-strip {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 10px; margin-bottom: 20px;
+    }
+    .tab-bar {
+      display: inline-flex; gap: 4px; background: #ffffff;
+      border: 1px solid #e2e8f0; border-radius: 999px; padding: 4px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+    }
+    .tab-btn {
+      border: none; background: transparent; cursor: pointer;
+      color: #475569; font-size: 13.5px; font-weight: 800;
+      padding: 8px 16px; border-radius: 999px; transition: all 0.18s;
+    }
+    .tab-btn:hover { color: #0f172a; }
+    .tab-btn.active { background: #eff6ff; color: #1d4ed8; }
+
+    .cta-group { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .cta-dark {
+      background: #0f172a; color: #fff; text-decoration: none;
+      font-size: 13.2px; font-weight: 800; padding: 9px 17px; border-radius: 999px;
+      box-shadow: 0 6px 16px rgba(15, 23, 42, 0.16);
+    }
+    .cta-soft {
+      background: #ffffff; color: #0f172a; text-decoration: none; border: 1px solid #e2e8f0;
+      font-size: 13.2px; font-weight: 800; padding: 8.5px 15px; border-radius: 999px;
+      cursor: pointer;
+    }
+
+    /* 参考图同款极简指标行（CU / 计费速率 / 活跃机器 / 本地零差距接力） */
+    .cu-strip {
+      background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px;
+      padding: 16px 22px; margin-bottom: 20px;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.03);
+    }
+    @media (max-width: 900px) { .cu-strip { grid-template-columns: repeat(2, 1fr); } }
+    .cu-item .k { font-size: 12.2px; color: #64748b; font-weight: 700; margin-bottom: 4px; }
+    .cu-item .v { font-size: 17.5px; font-weight: 900; color: #0f172a; }
+    .cu-item .s { font-size: 11.8px; color: #64748b; margin-top: 2px; }
+
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* 双机器卡片布局 */
+    .machine-grid {
+      display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 18px; margin-bottom: 20px;
+    }
+    @media (max-width: 960px) { .machine-grid { grid-template-columns: 1fr; } }
+
+    .m-card {
+      background: #ffffff; border: 1px solid #e2e8f0; border-radius: 22px;
+      padding: 22px 24px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.045);
+      display: flex; flex-direction: column; gap: 14px;
+    }
+    .m-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .m-title { font-size: 17px; font-weight: 900; display: flex; align-items: center; gap: 8px; }
+
+    .pill {
+      font-size: 12px; font-weight: 800; padding: 4px 11px; border-radius: 999px; display: inline-flex; align-items: center; gap: 5px;
+    }
+    .pill.green { background: #dcfce7; color: #15803d; }
+    .pill.blue  { background: #e0f2fe; color: #0369a1; }
+    .pill.amber { background: #fef3c7; color: #b45309; }
+    .pill.gray  { background: #f1f5f9; color: #64748b; }
+    .pill.rose  { background: #ffe4e6; color: #be123c; }
+
+    .kv-list { display: flex; flex-direction: column; gap: 8px; font-size: 13.4px; }
+    .kv-row { display: grid; grid-template-columns: 84px 1fr; gap: 10px; line-height: 1.5; }
+    .kv-row .k { color: #64748b; font-weight: 700; }
+    .kv-row .v { color: #0f172a; font-weight: 700; word-break: break-all; }
+
+    .meter-box {
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px;
+      padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;
+    }
+    .meter-head { display: flex; justify-content: space-between; font-size: 12.6px; font-weight: 800; color: #334155; }
+    .meter-bar { height: 9px; background: #e2e8f0; border-radius: 999px; overflow: hidden; }
+    .meter-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #2563eb, #10b981); transition: width 0.45s ease; }
+    .meter-fill.ram { background: linear-gradient(90deg, #0ea5e9, #6366f1); }
+
+    .warm-pool {
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px;
+      padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;
+    }
+    .warm-tag {
+      background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;
+      padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 800;
+    }
+
+    /* 开关样式（复刻截图蓝色滑块感） */
+    .toggle-row { display: flex; gap: 22px; flex-wrap: wrap; align-items: center; }
+    .toggle-lbl {
+      display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 800; color: #1e293b; cursor: pointer;
+    }
+    .toggle-lbl input[type=checkbox] { width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer; }
+
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    input, select, textarea {
+      background: #f8fafc; border: 1.5px solid #cbd5e1; color: #0f172a;
+      padding: 9px 12px; border-radius: 12px; font-size: 13.4px; outline: none; font-family: inherit;
+    }
+    input:focus, textarea:focus, select:focus { border-color: #2563eb; background: #fff; }
+    button.btn {
+      border: none; border-radius: 999px; padding: 9.5px 18px;
+      font-size: 13.2px; font-weight: 800; cursor: pointer;
+      color: #fff; background: #0f172a;
+      display: inline-flex; align-items: center; gap: 6px; transition: filter 0.15s, opacity 0.15s;
+    }
+    button.btn:hover { filter: brightness(1.08); }
+    button.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    button.btn.blue { background: #2563eb; }
+    button.btn.green { background: #16a34a; }
+    button.btn.amber { background: #d97706; }
+    button.btn.pink { background: #db2777; }
+    button.btn.soft { background: #f1f5f9; color: #0f172a; border: 1px solid #cbd5e1; }
+
+    .log-box {
+      background: #0f172a; color: #e2e8f0; border-radius: 14px;
+      padding: 12px 14px; font-family: Consolas, monospace; font-size: 12px;
+      max-height: 165px; overflow-y: auto; line-height: 1.6;
+    }
+
+    /* 8 位宝宝工坊 & 资产画廊网格 */
+    .section-card {
+      background: #ffffff; border: 1px solid #e2e8f0; border-radius: 22px;
+      padding: 22px 24px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.045); margin-bottom: 20px;
+    }
+    .voice-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 14px; }
+    @media (max-width: 1180px) { .voice-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 680px) { .voice-grid { grid-template-columns: 1fr; } }
+
+    .v-card {
+      background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 18px;
+      padding: 14px; display: flex; flex-direction: column; gap: 9px;
+    }
+    .v-card.locked { border-color: #86efac; background: #f0fdf4; }
+    .v-head { display: flex; align-items: center; gap: 10px; }
+    .v-head img {
+      width: 56px; height: 56px; border-radius: 16px; object-fit: contain;
+      background: #fff; border: 2px solid #e2e8f0; flex-shrink: 0;
+    }
+    .v-card audio { width: 100%; height: 34px; }
+    .v-card textarea { width: 100%; min-height: 66px; font-size: 12px; line-height: 1.48; background: #fff; }
+    .v-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+    .v-btns button.btn { padding: 6.5px 11px; font-size: 12px; }
+
+    .scene-gallery { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 14px; }
+    @media (max-width: 1000px) { .scene-gallery { grid-template-columns: repeat(2, 1fr); } }
+    .sc-tile {
+      background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 14px; overflow: hidden; text-align: center;
+    }
+    .sc-tile img { width: 100%; height: 220px; object-fit: cover; display: block; }
+    .sc-tile .cap { padding: 8px; font-size: 12.5px; font-weight: 800; color: #334155; }
+
+    .toast {
+      position: fixed; bottom: 22px; right: 22px; z-index: 9999;
+      background: #0f172a; color: #fff; padding: 12px 20px; border-radius: 14px;
+      font-size: 13.5px; font-weight: 800; box-shadow: 0 12px 28px rgba(15, 23, 42, 0.25);
+      opacity: 0; transform: translateY(10px); pointer-events: none; transition: all 0.22s;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+  <div class="top-brand">
+    <div class="brand-left">
+      <h1>Colab 机器</h1>
+      <span class="email-pill" id="top-email-pill">未绑定 Google 账号（点「账号与配置」填写）</span>
+      <span class="pill blue" id="top-mode-pill">真实模型模式 · 云地双同源热备</span>
+    </div>
+  </div>
+
+  <div class="nav-strip">
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('machines', this)">机器面板</button>
+      <button class="tab-btn" onclick="switchTab('voices', this)">8位幼态声线与克隆调试</button>
+      <button class="tab-btn" onclick="switchTab('assets', this)">2D幼态形象与5套背景</button>
+      <button class="tab-btn" onclick="switchTab('account', this)">账号与掉线自动恢复</button>
+    </div>
+    <div class="cta-group">
+      <a class="cta-dark" href="/director">🎛️ 田园导播台 ➔</a>
+      <a class="cta-dark" href="/studio" style="background:linear-gradient(135deg,#fb7299,#f59e0b);">🎬 视频&amp;B站总控 ➔</a>
+      <a class="cta-soft" href="/stage?mute_audio=1" target="_blank">🌸 打开 2D 活体舞台</a>
+      <button class="cta-soft" onclick="refreshAll()">🔄 刷新状态</button>
+    </div>
+  </div>
+
+  <!-- 参考图同款顶部 CU 与活跃机器指标条 -->
+  <div class="cu-strip">
+    <div class="cu-item">
+      <div class="k">CU 配额 / 账号状态</div>
+      <div class="v" id="cu-balance-val">—（未填 OAuth Token）</div>
+      <div class="s" id="cu-avail-gpus">支持降级队列：G4 → A100 → L4 → T4</div>
+    </div>
+    <div class="cu-item">
+      <div class="k">95GB 云端机器状态</div>
+      <div class="v" id="cloud-status-val">探测中...</div>
+      <div class="s" id="cloud-uptime-sub">每 25 秒自动心跳看门狗守护</div>
+    </div>
+    <div class="cu-item">
+      <div class="k">本机 0 显卡同源克隆 (8766)</div>
+      <div class="v" id="local-cloner-val">检测中...</div>
+      <div class="s" id="local-cloner-sub">Qwen3-TTS-12Hz-0.6B-Base（离开云端无缝接管）</div>
+    </div>
+    <div class="cu-item">
+      <div class="k">本地永久离线资产</div>
+      <div class="v" id="offline-assets-val">48 / 48 语音 · 8宝宝 · 5背景</div>
+      <div class="s">全部已由 95GB GPU 烘焙回本地硬盘</div>
+    </div>
+  </div>
+
+  <!-- ==================== TAB 1: 机器面板（云端 95GB + 本机同源热备双机卡） ==================== -->
+  <div id="pane-machines" class="tab-pane active">
+    <div class="machine-grid">
+      <!-- 左卡：95GB Colab 云端真模型机器 -->
+      <div class="m-card">
+        <div class="m-head">
+          <div class="m-title">
+            <span>🖥️ 95GB 云端真模型机器</span>
+            <span class="pill green" id="cloud-run-pill">探测中</span>
+          </div>
+          <span class="pill blue">真实模型模式</span>
+        </div>
+
+        <div class="row" style="gap:7px;" id="cloud-badges-row">
+          <span class="pill gray">等待遥测...</span>
+        </div>
+
+        <div class="kv-list">
+          <div class="kv-row"><div class="k">主力引擎</div><div class="v" id="kv-cloud-engine">Qwen3-TTS-12Hz-1.7B (VoiceDesign + Base GPU) + BiRefNet</div></div>
+          <div class="kv-row"><div class="k">GPU</div><div class="v" id="kv-cloud-gpu">—</div></div>
+          <div class="kv-row"><div class="k">公网隧道</div><div class="v" id="kv-cloud-url">—</div></div>
+        </div>
+
+        <div class="meter-box">
+          <div class="meter-head"><span>显存 VRAM</span><span id="vram-txt">0.0 / 0.0 GB (0%)</span></div>
+          <div class="meter-bar"><div class="meter-fill" id="vram-bar"></div></div>
+          <div class="meter-head"><span>内存 RAM</span><span id="ram-txt">0.0 / 0.0 GB (0%)</span></div>
+          <div class="meter-bar"><div class="meter-fill ram" id="ram-bar"></div></div>
+        </div>
+
+        <div class="warm-pool">
+          <div style="font-size:12.4px;font-weight:800;color:#475569;">⚡ 显存热池已驻留（零冷启动延迟）</div>
+          <div class="row" style="gap:6px;" id="warm-tags-row"><span class="pill gray">等待读取</span></div>
+        </div>
+
+        <div class="toggle-row">
+          <label class="toggle-lbl"><input type="checkbox" id="chk-auto-reconnect" onchange="quickSaveAccount()" /> 掉线自动隧道自愈</label>
+          <label class="toggle-lbl"><input type="checkbox" id="chk-auto-downgrade" onchange="quickSaveAccount()" /> 自动降级队列 (G4→A100→L4→T4)</label>
+        </div>
+
+        <div class="row">
+          <button class="btn" id="btn-recover" onclick="triggerRecover()">⚡ 一键自愈恢复云端服务与8位干声</button>
+          <a class="cta-soft" id="link-open-colab" href="https://colab.research.google.com/" target="_blank">🚀 打开 Colab 重启机器</a>
+        </div>
+      </div>
+
+      <!-- 右卡：本机 0 显卡同源实时克隆热备机器（127.0.0.1:8766） -->
+      <div class="m-card">
+        <div class="m-head">
+          <div class="m-title">
+            <span>💻 本机同源实时克隆机器 (CPU 热备)</span>
+            <span class="pill amber" id="local-run-pill">加载中</span>
+          </div>
+          <span class="pill green">离开云端 0 停播</span>
+        </div>
+
+        <div style="font-size:13px;color:#475569;line-height:1.6;">
+          在本机 AMD Ryzen 7 8845H (16 核 + 28GB 内存) 直接运行与云端 <b>100% 同家族同声码器</b>的 <b>Qwen3-TTS-12Hz-0.6B-Base</b>，直接锁死 95GB 显卡刚捏出来的 8 段极幼态原声 WAV！一旦 Colab 到期停机，系统 <b>0 秒无缝切到本机实时克隆任意新台词</b>，音色几乎零差距！
+        </div>
+
+        <div class="kv-list">
+          <div class="kv-row"><div class="k">本机引擎</div><div class="v" id="kv-local-engine">Qwen3-TTS-12Hz-0.6B-Base (CPU bfloat16)</div></div>
+          <div class="kv-row"><div class="k">监听端口</div><div class="v" id="kv-local-url">http://127.0.0.1:8766</div></div>
+          <div class="kv-row"><div class="k">锁定音色</div><div class="v" id="kv-local-voices">检测中...</div></div>
+          <div class="kv-row"><div class="k">详细状态</div><div class="v" id="kv-local-detail">正在预热...</div></div>
+        </div>
+
+        <div class="toggle-row">
+          <label class="toggle-lbl"><input type="checkbox" id="use-colab-tts" onchange="saveRouteCfg()" /> 优先使用 95GB 云端 1.7B 克隆</label>
+          <label class="toggle-lbl"><input type="checkbox" id="use-local-genie" onchange="saveRouteCfg()" /> 掉线自动切本机 0.6B 同源实时克隆</label>
+        </div>
+
+        <div class="row">
+          <button class="btn blue" onclick="testVoiceRoute('deepseek', true)">🧪 测试离线纯本机 0.6B 实时克隆</button>
+          <button class="btn green" onclick="syncAllRefs()">📥 重新同步 8 位干声</button>
+        </div>
+
+        <div style="font-size:12.4px;font-weight:800;color:#475569;">📜 掉线看门狗与自愈实时日志</div>
+        <div class="log-box" id="watchdog-logs">等待看门狗日志...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== TAB 2: 8位幼态声线与克隆调试 ==================== -->
+  <div id="pane-voices" class="tab-pane">
+    <div class="section-card">
+      <div class="m-head">
+        <div>
+          <h2 style="font-size:18px;font-weight:900;">🍼 8 位宝宝极幼态声线工坊（云端 1.7B & 本机 0.6B 共用同一套 8 位原声参考！）</h2>
+          <div style="font-size:13px;color:#64748b;margin-top:4px;">下方播放器直接试听已永久保存到本机硬盘的 8 位宝宝原声 WAV；改一句描述点「✨ 95G 重捏」可随时焕新音色。</div>
+        </div>
+        <div class="row">
+          <input id="test-phrase" style="width:320px;" value="唔……大家好呀，今天的小院阳光暖烘烘的，猜猜我是哪只小宝宝呀~" />
+          <button class="btn green" onclick="bakeVoices(false)">🎙️ 补全 48 条离线语音库</button>
+        </div>
+      </div>
+      <div class="voice-grid" id="voice-grid"></div>
+    </div>
+  </div>
+
+  <!-- ==================== TAB 3: 2D 超幼态坐姿形象与 5 套游戏大师级背景 ==================== -->
+  <div id="pane-assets" class="tab-pane">
+    <div class="section-card">
+      <div class="m-head">
+        <h2 style="font-size:18px;font-weight:900;">🎨 95GB Animagine-XL 4.0 精绘 · 5 套游戏专属大师级 2D 实景背景（已永久存本地）</h2>
+        <span class="pill green">0 显卡离线秒切</span>
+      </div>
+      <div class="scene-gallery" id="scene-gallery"></div>
+    </div>
+
+    <div class="section-card">
+      <div class="m-head">
+        <h2 style="font-size:18px;font-weight:900;">✂️ BiRefNet GPU 发丝级透明抠图换立绘</h2>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <select id="mat-char"></select>
+        <input type="file" id="mat-file" accept="image/*" style="flex:1;padding:6px;" />
+        <button class="btn pink" onclick="runMatting()">✂️ 95GB 云端抠图并替换</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== TAB 4: 账号与掉线自动恢复配置（支持官方 OAuth / 固定隧道 / 远程管理基座） ==================== -->
+  <div id="pane-account" class="tab-pane">
+    <div class="section-card">
+      <div class="m-head" style="margin-bottom:12px;">
+        <div>
+          <h2 style="font-size:18px;font-weight:900;">🔑 Google 账号与 Colab 防掉线自动重连配置</h2>
+          <div style="font-size:13px;color:#64748b;margin-top:4px;">
+            所有凭证均仅加密/本地保存在你电脑的 <code>colab_account.json</code> 与 <code>.env</code> 中，绝不上传第三方！支持对接 Google 官方 <code>colab-vscode</code> OAuth 协议实时读取 CU 余额，或配置固定 Cloudflare Tunnel 域名实现重启秒连。
+          </div>
+        </div>
+        <button class="btn blue" onclick="refreshCU()">🔄 立即同步官方 CU 配额</button>
+      </div>
+
+      <div class="machine-grid" style="margin-bottom:0;">
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <h3 style="font-size:15px;font-weight:900;">① Google 官方账号一键登录（自动回环抓取邮箱、Token 与 CU 余额，零手填！）</h3>
+          <div style="background:#eff6ff;border:1.5px solid #93c5fd;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;">
+            <div style="font-size:13px;color:#1e3a8a;line-height:1.6;">
+              <b>官方安全 OAuth 2.0 授权流</b>：点击下方按钮自动弹出 Google 官方登录页，你亲手点「允许」后自动跳回本机并<b>自动抓取账号邮箱、永久续期凭证与真实 CU 配额</b>，绝不让你手贴一长串 Token！
+            </div>
+            <div class="row">
+              <button class="btn blue" id="btn-google-login" onclick="startOfficialGoogleLogin()">🔑 使用 Google 官方账号一键登录</button>
+              <a class="btn soft" id="btn-open-colab-direct" href="https://colab.research.google.com/" target="_blank" rel="noopener" style="text-decoration:none;">🌐 直接打开 Colab 网页 ↗</a>
+              <button class="btn soft" onclick="logoutOfficialGoogle()">🚪 退出授权</button>
+            </div>
+            <div id="oauth-direct-link-box" style="display:none;background:#fefce8;border:1.5px solid #facc15;border-radius:10px;padding:10px 12px;font-size:12.5px;color:#854d0e;">
+              👉 如果浏览器没自动跳出新标签页，请直接点此链接打开 Google 授权页：
+              <a id="oauth-direct-link" href="#" target="_blank" rel="noopener" style="color:#2563eb;font-weight:900;text-decoration:underline;">立即打开 Google 官方授权页面 ↗</a>
+            </div>
+            <div style="font-size:12px;color:#475569;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <span id="oauth-client-badge" class="pill gray">正在检测桌面 OAuth 客户端...</span>
+              <label class="btn soft" style="cursor:pointer;padding:6px 12px;font-size:12px;">
+                📂 选择 Google client_secret.json
+                <input type="file" accept=".json,application/json" style="display:none;" onchange="importClientJson(this)" />
+              </label>
+              <a href="https://console.cloud.google.com/auth/audience" target="_blank" rel="noopener" class="btn amber" style="padding:5px 11px;font-size:12px;text-decoration:none;">🔓 报 403 内测拦截？点此去 Google 点「发布应用」秒解 ↗</a>
+              <a href="javascript:void(0)" onclick="openOAuthWizard()" style="color:#2563eb;font-weight:800;font-size:12px;">❓ 首次 3 步向导</a>
+            </div>
+            <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:9px 12px;font-size:12px;color:#9a3412;line-height:1.55;">
+              💡 <b>为什么刚才弹「尚未完成 Google 验证流程 (403)」？</b>你自建的 OAuth 应用默认是「测试模式」且名单为空。我们已为你精简为<b>免审核基础权限</b>：只需点上方橙色按钮打开 Google Cloud <b>「目标对象 (Audience)」</b>，直接点 <b>「发布应用 (Publish App)」</b> 确认（<b>无需填任何审核资料，1秒生效，任意账号可登</b>），或在同页下方 <b>Test users</b> 添加你的邮箱即可！其实不登 Google 账号也完全不影响当前 95GB 语音与掉线自动重连！
+            </div>
+          </div>
+          <!-- 首次开通官方登录 3 步小白向导弹窗（点蓝色登录按钮若未导入 JSON 自动弹出！） -->
+          <div id="oauth-wizard-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(15,23,42,0.52);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:20px;">
+            <div style="background:#fff;border-radius:20px;max-width:560px;width:100%;padding:24px;box-shadow:0 24px 60px rgba(15,23,42,0.28);display:flex;flex-direction:column;gap:14px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <h3 style="font-size:18px;font-weight:900;color:#0f172a;">🔑 首次启用 Google 官方自动登录（仅需 1 次）</h3>
+                <button class="btn soft" style="padding:4px 10px;" onclick="closeOAuthWizard()">✕</button>
+              </div>
+              <div style="font-size:13.2px;color:#334155;line-height:1.7;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;">
+                <b>为什么刚才没有直接跳 Google 登录页？</b><br/>
+                Google 官方安全策略要求：任何本机程序拉起 <code>accounts.google.com</code> 授权，必须先带一份免费的 <b>桌面端 OAuth 客户端 JSON</b>（仅首次需要，之后永久点一下直接弹浏览器自动登录续期！）。<br/><br/>
+                <b>30 秒 3 步搞定：</b><br/>
+                ① 点下方原生链接按钮直接在新标签页打开 Google Cloud 凭据页（绝不被浏览器拦截！）；<br/>
+                ② 点顶部 <b>「+ 创建凭据」➔「OAuth 客户端 ID」➔ 类型选「桌面应用」</b> ➔ 创建并点 <b>「下载 JSON」</b>；<br/>
+                ③ 把刚下载的 <code>client_secret_xxx.json</code> 从下面选进来，<b>选完立刻在新标签页打开 Google 登录授权页！</b>
+              </div>
+              <div class="row">
+                <a class="btn blue" href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener" style="text-decoration:none;">🌐 第 1 步：直接在新标签页打开 Google Cloud 凭据页 ↗</a>
+              </div>
+              <div class="row" style="background:#eff6ff;border:2px dashed #60a5fa;border-radius:14px;padding:14px;justify-content:center;">
+                <label class="btn green" style="cursor:pointer;font-size:14px;">
+                  📂 第 2 步：选择刚下载的 client_secret.json（选完立刻弹登录窗！）
+                  <input type="file" accept=".json,application/json" style="display:none;" onchange="importClientJson(this)" />
+                </label>
+              </div>
+              <div style="font-size:12px;color:#64748b;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                <span>💡 不配置 OAuth 也没关系：当前 95GB 云端语音 + 本机 8766 克隆已 100% 满血运行！</span>
+                <button class="btn soft" style="padding:6px 12px;" onclick="closeOAuthWizard()">先用本地守护模式</button>
+              </div>
+            </div>
+          </div>
+          <input id="acc-email" placeholder="备注 Google 账号邮箱（官方登录后自动抓取填入）" />
+          <input id="acc-nb-url" placeholder="你的 Colab Notebook 直达链接（掉线 1 秒打开）" />
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:11px;">
+          <h3 style="font-size:15px;font-weight:900;">② 隧道自愈 & 固定域名配置（重启 Colab 永不改网址！）</h3>
+          <input id="cfg-colab-url" placeholder="当前 95GB 语音隧道 URL (https://xxx.trycloudflare.com)" />
+          <input id="cfg-colab-token" type="password" placeholder="云端安全 Token（已配好可留空）" />
+          <input id="acc-admin-url" placeholder="Colab 7861 远程管理基座 URL（用于掉线 3 秒自动重启 7862 隧道）" />
+          <input id="acc-admin-tok" type="password" placeholder="7861 管理基座 ADMIN_TOKEN（已配好可留空）" />
+          <input id="acc-cf-token" type="password" placeholder="Cloudflare Named Tunnel Token（免费固定域名，重启永不改网址！）" />
+          <input id="cfg-local-url" placeholder="本机同源 0.6B 克隆引擎地址（默认 http://127.0.0.1:8766）" />
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:16px;">
+        <button class="btn green" onclick="saveAccountAndConfig()">💾 保存全部账号与防掉线配置</button>
+        <button class="btn" onclick="triggerRecover()">⚡ 测试立即远程自愈重连</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let metaData = null;
+    let dashData = null;
+    let testPlayer = null;
+
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(window._tTimer);
+      window._tTimer = setTimeout(() => el.classList.remove('show'), 3400);
+    }
+
+    function switchTab(id, btn) {
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('pane-' + id).classList.add('active');
+      if (btn) btn.classList.add('active');
+    }
+
+    function playUrl(url) {
+      if (!url) return;
+      if (testPlayer) { try { testPlayer.pause(); } catch (_) {} }
+      testPlayer = new Audio(url);
+      testPlayer.preservesPitch = true;
+      testPlayer.playbackRate = Number(metaData?.snapshot?.voice_playback_rate || 0.88);
+      testPlayer.play().catch(() => showToast('⚠️ 请再点一次试听以允许浏览器发声'));
+    }
+
+    async function refreshAll() {
+      const [m, d] = await Promise.all([
+        fetch('/api/meta').then(r => r.json()),
+        fetch('/api/colab/dashboard').then(r => r.json()).catch(() => ({})),
+      ]);
+      metaData = m;
+      dashData = d;
+      renderAll();
+    }
+
+    function renderAll() {
+      const snap = metaData?.snapshot || {};
+      const personas = metaData?.personas || {};
+      const acc = dashData?.account || {};
+      const cu = dashData?.cu_info || {};
+      const ch = dashData?.cloud_health || {};
+      const lc = dashData?.local_cloner || {};
+
+      // 顶部账号邮箱 & CU 指标条
+      document.getElementById('top-email-pill').textContent = acc.google_email
+        ? `✅ ${acc.google_email}`
+        : '⚙️ 未填 Google 账号（可在「账号与配置」填写）';
+      document.getElementById('cu-balance-val').textContent = cu.cu_balance != null
+        ? `${cu.cu_balance} CU (${cu.tier || 'PRO'})`
+        : (acc.has_oauth_token ? '已填 OAuth · 点刷新同步' : '本地守护模式（免 OAuth 亦可用）');
+      document.getElementById('cu-avail-gpus').textContent = `降级队列：${(cu.available_gpus || ['G4','A100','L4','T4']).join(' → ')}`;
+
+      // 云端 95GB 机器状态
+      if (ch.connected) {
+        const gpu = ch.gpu || {};
+        const ram = ch.ram || {};
+        const vU = Number(gpu.vram_used_gb || 0), vT = Number(gpu.vram_total_gb || 0);
+        const vP = vT > 0 ? Math.min(100, Math.round((vU / vT) * 100)) : 0;
+        const rU = Number(ram.ram_used_gb || 0), rT = Number(ram.ram_total_gb || 0);
+        const rP = rT > 0 ? Math.min(100, Math.round((rU / rT) * 100)) : 0;
+
+        document.getElementById('cloud-status-val').textContent = '🟢 运行中 · 95GB 在线';
+        document.getElementById('cloud-run-pill').textContent = '运行中';
+        document.getElementById('cloud-run-pill').className = 'pill green';
+        document.getElementById('kv-cloud-gpu').textContent = `${gpu.gpu_name || 'GPU'} (${vT.toFixed(1)} GB)`;
+        document.getElementById('kv-cloud-url').textContent = ch.colab_url || snap.colab_url || '—';
+        document.getElementById('vram-txt').textContent = `${vU.toFixed(2)} / ${vT.toFixed(2)} GB (${vP}%)`;
+        document.getElementById('vram-bar').style.width = `${vP}%`;
+        document.getElementById('ram-txt').textContent = `${rU.toFixed(1)} / ${rT.toFixed(1)} GB (${rP}%)`;
+        document.getElementById('ram-bar').style.width = `${rP}%`;
+
+        const mins = Math.floor((ch.uptime_sec || 0) / 60);
+        const secs = (ch.uptime_sec || 0) % 60;
+        document.getElementById('cloud-badges-row').innerHTML = `
+          <span class="pill green">已运行 ${mins}分${secs}秒</span>
+          <span class="pill blue">8位幼态音色已锁死</span>
+          <span class="pill amber">自愈重连 ${dashData.reconnect_count || 0} 次</span>
+        `;
+        const warms = ch.warm_models || [];
+        document.getElementById('warm-tags-row').innerHTML = warms.length
+          ? warms.map(w => `<span class="warm-tag">✓ ${w} 已驻留</span>`).join('')
+          : '<span class="pill amber">正在预热显存...</span>';
+      } else {
+        document.getElementById('cloud-status-val').textContent = '⚪ 云端离线（本机已接管）';
+        document.getElementById('cloud-run-pill').textContent = '未连接';
+        document.getElementById('cloud-run-pill').className = 'pill gray';
+        document.getElementById('kv-cloud-url').textContent = snap.colab_url || '—';
+        document.getElementById('cloud-badges-row').innerHTML = `<span class="pill rose">云端离线：${ch.message || '等待重连'}</span>`;
+      }
+
+      // 本机 0 显卡同源实时克隆状态 (8766)
+      if (lc.connected && lc.status === 'ready') {
+        document.getElementById('local-cloner-val').textContent = `🟢 已就绪 (${(lc.locked_voices || []).length}/8)`;
+        document.getElementById('local-run-pill').textContent = '运行中';
+        document.getElementById('local-run-pill').className = 'pill green';
+        document.getElementById('kv-local-voices').textContent = `${(lc.locked_voices || []).length} / 8 位已预编码常驻内存（与云端同源！）`;
+        document.getElementById('kv-local-detail').textContent = lc.detail || '就绪';
+      } else if (lc.connected) {
+        document.getElementById('local-cloner-val').textContent = `🟡 预热中 (${lc.status || 'booting'})`;
+        document.getElementById('local-run-pill').textContent = '预热中';
+        document.getElementById('local-run-pill').className = 'pill amber';
+        document.getElementById('kv-local-detail').textContent = lc.detail || '正在下载/加载 Qwen3-TTS-0.6B 到本机内存...';
+      } else {
+        document.getElementById('local-cloner-val').textContent = '⚪ 未启动';
+        document.getElementById('local-run-pill').textContent = '未启动';
+        document.getElementById('local-run-pill').className = 'pill gray';
+        document.getElementById('kv-local-detail').textContent = '本机 8766 克隆服务未响应';
+      }
+
+      // 离线资产统计
+      const vbTot = Object.values(snap.voice_bank_counts || {}).reduce((a, b) => a + Number(b || 0), 0);
+      const chCnt = (snap.chibi_v7_ready || []).length;
+      const scCnt = (snap.scenes_v7_ready || []).length;
+      document.getElementById('offline-assets-val').textContent = `${vbTot}/48 语音 · ${chCnt}宝宝 · ${scCnt}背景`;
+
+      // 同步开关 & 表单（仅为空时填）
+      document.getElementById('chk-auto-reconnect').checked = !!acc.auto_reconnect;
+      document.getElementById('chk-auto-downgrade').checked = !!acc.auto_downgrade;
+      document.getElementById('use-colab-tts').checked = !!snap.use_colab_tts;
+      document.getElementById('use-local-genie').checked = !!snap.use_local_genie;
+      if (acc.colab_notebook_url) document.getElementById('link-open-colab').href = acc.colab_notebook_url;
+
+      const fillOnce = (id, val) => { const e = document.getElementById(id); if (e && !e.value && val) e.value = val; };
+      fillOnce('acc-email', acc.google_email);
+      fillOnce('acc-nb-url', acc.colab_notebook_url);
+      fillOnce('acc-admin-url', acc.remote_admin_url);
+      fillOnce('cfg-colab-url', snap.colab_url);
+      fillOnce('cfg-local-url', snap.local_genie_url || 'http://127.0.0.1:8766');
+
+      const ocb = document.getElementById('oauth-client-badge');
+      if (ocb) {
+        if (acc.has_oauth_token) {
+          ocb.className = 'pill green';
+          ocb.textContent = `✅ 官方已登录 (${acc.google_email || '已自动续期'})`;
+        } else if (acc.has_oauth_client) {
+          ocb.className = 'pill blue';
+          ocb.textContent = '🟢 已导入 OAuth JSON，直接点上方蓝色按钮登录！';
+        } else {
+          ocb.className = 'pill amber';
+          ocb.textContent = '⚪ 首次使用请先选择 1 次 Google 桌面端 client_secret.json';
+        }
+      }
+
+      // 看门狗实时日志
+      const logs = dashData?.logs || [];
+      document.getElementById('watchdog-logs').innerHTML = logs.length
+        ? logs.map(l => `<div>[${l.ts}] ${l.msg}</div>`).join('')
+        : '<div>看门狗正在后台静默守护...</div>';
+
+      // 8 位宝宝语音工坊网格
+      const order = Object.keys(personas);
+      const lockedSet = new Set(ch.locked_voices || []);
+      const grid = document.getElementById('voice-grid');
+      if (!grid.children.length) {
+        grid.innerHTML = order.map(pid => {
+          const p = personas[pid];
+          return `
+            <div class="v-card ${lockedSet.has(pid) ? 'locked' : ''}" id="vc-${pid}">
+              <div class="v-head">
+                <img src="/static/chibi_v7/${pid}.png" onerror="this.src='${p.avatar_png}'" alt="${pid}" />
+                <div>
+                  <h4 style="font-size:13.8px;font-weight:900;">${p.internal_label}</h4>
+                  <div style="font-size:11.5px;color:#15803d;font-weight:700;">云端 1.7B + 本机 0.6B 双锁死</div>
+                </div>
+              </div>
+              <audio id="va-${pid}" controls preload="none" src="/static/voice_refs/${pid}_baby_ref.wav"></audio>
+              <textarea id="vp-${pid}">${(p.voice_design_prompt || '').trim()}</textarea>
+              <div class="v-btns">
+                <button class="btn blue" onclick="testVoiceRoute('${pid}', false)">🎙️ 实时克隆试听</button>
+                <button class="btn green" onclick="redesignVoice('${pid}')">✨ 95G 重捏</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // 5 套游戏实景背景画廊
+      const scGal = document.getElementById('scene-gallery');
+      if (!scGal.children.length) {
+        const sceneMeta = [
+          ['scene_life', '☀️ 田园茶话会露台'],
+          ['scene_chess', '🌸 樱花树下棋局'],
+          ['scene_undercover', '🕵️ 童话侦探推理室'],
+          ['scene_werewolf_day', '⛺ 仲夏营地清晨'],
+          ['scene_werewolf_night', '✨ 营地星光萤火虫夜'],
+        ];
+        scGal.innerHTML = sceneMeta.map(([k, title]) => `
+          <div class="sc-tile">
+            <img src="/static/scenes/${k}.jpg?v=7" alt="${title}" />
+            <div class="cap">${title}</div>
+          </div>
+        `).join('');
+      }
+      const matSel = document.getElementById('mat-char');
+      if (!matSel.options.length) {
+        matSel.innerHTML = order.map(pid => `<option value="${pid}">${personas[pid].internal_label}</option>`).join('');
+      }
+    }
+
+    async function saveRouteCfg() {
+      const snap = metaData?.snapshot || {};
+      await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          base_url: snap.llm_base_url || 'https://bbying.me/v1',
+          api_key: '',
+          model: snap.llm_model || 'deepseek-v4.1-flash',
+          colab_url: document.getElementById('cfg-colab-url').value.trim() || snap.colab_url || '',
+          colab_token: document.getElementById('cfg-colab-token').value.trim(),
+          colab_tts_model: 'qwen3-tts-1.7b',
+          use_colab_tts: document.getElementById('use-colab-tts').checked,
+          local_genie_url: document.getElementById('cfg-local-url').value.trim() || 'http://127.0.0.1:8766',
+          use_local_genie: document.getElementById('use-local-genie').checked,
+        }),
+      });
+      showToast('✅ 语音路由开关已保存！');
+      refreshAll();
+    }
+
+    async function quickSaveAccount() {
+      await fetch('/api/colab/account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          auto_reconnect: document.getElementById('chk-auto-reconnect').checked,
+          auto_downgrade: document.getElementById('chk-auto-downgrade').checked,
+        }),
+      });
+      showToast('✅ 自动守护策略已更新！');
+    }
+
+    function openOAuthWizard() {
+      const m = document.getElementById('oauth-wizard-modal');
+      if (m) m.style.display = 'flex';
+    }
+    function closeOAuthWizard() {
+      const m = document.getElementById('oauth-wizard-modal');
+      if (m) m.style.display = 'none';
+    }
+    async function openOfficialPage(target) {
+      const r = await fetch('/api/colab/open_browser', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target }),
+      }).then(x => x.json()).catch(() => ({}));
+      if (r.ok) {
+        showToast('🌐 已为你拉起系统浏览器窗口！');
+        if (!r.browser_opened && r.url) window.open(r.url, '_blank');
+      } else {
+        showToast('⚠️ 打开链接失败：' + (r.error || ''));
+      }
+    }
+
+    async function importClientJson(inputEl) {
+      const f = inputEl.files?.[0];
+      if (!f) return;
+      const fd = new FormData();
+      fd.append('file', f);
+      const r = await fetch('/api/colab/oauth/import_json', { method: 'POST', body: fd }).then(x => x.json());
+      inputEl.value = '';
+      if (r.ok) {
+        closeOAuthWizard();
+        showToast('✅ 已导入 Google OAuth 客户端 JSON，正在为你拉起系统浏览器登录！');
+        await refreshAll();
+        startOfficialGoogleLogin();
+      } else {
+        showToast('❌ ' + (r.error || 'JSON 导入失败'));
+      }
+    }
+
+    let oauthPollTimer = null;
+    async function startOfficialGoogleLogin() {
+      const hasClient = !!dashData?.account?.has_oauth_client;
+      if (!hasClient) {
+        openOAuthWizard();
+        return;
+      }
+      // 关键：在任何 await 之前的用户点击同步栈里立刻预占新标签页，100% 绕过浏览器弹窗拦截器！
+      let popWin = null;
+      try { popWin = window.open('about:blank', '_blank'); } catch (_) {}
+
+      const r = await fetch('/api/colab/oauth/start', { method: 'POST' }).then(x => x.json()).catch(() => ({}));
+      if (r.ok && r.auth_url) {
+        // 同时展示直达链接兜底，绝不出现无法打开的情况！
+        const box = document.getElementById('oauth-direct-link-box');
+        const lnk = document.getElementById('oauth-direct-link');
+        if (box && lnk) { lnk.href = r.auth_url; box.style.display = 'block'; }
+        if (popWin && !popWin.closed) {
+          popWin.location.href = r.auth_url;
+        } else if (!r.browser_opened) {
+          window.open(r.auth_url, '_blank');
+        }
+        showToast('🌐 已在新标签页打开 Google 官方授权页，点「允许」后自动回传账号与 CU！');
+        clearInterval(oauthPollTimer);
+        let tries = 0;
+        oauthPollTimer = setInterval(async () => {
+          tries++;
+          if (tries > 30) { clearInterval(oauthPollTimer); return; }
+          const d = await fetch('/api/colab/dashboard').then(x => x.json()).catch(() => null);
+          if (d?.account?.has_oauth_token) {
+            clearInterval(oauthPollTimer);
+            if (box) box.style.display = 'none';
+            showToast(`🎉 Google 官方登录成功！已抓取 ${d.account.google_email || '账号'} 与真实 CU！`);
+            refreshAll();
+          }
+        }, 3000);
+      } else {
+        if (popWin && !popWin.closed) popWin.close();
+        if (r.need_client_json) openOAuthWizard();
+        else showToast('💡 ' + (r.error || '请先导入 Google OAuth client_secret.json'));
+      }
+    }
+
+    async function logoutOfficialGoogle() {
+      await fetch('/api/colab/oauth/logout', { method: 'POST' });
+      showToast('🚪 已清除 Google OAuth 登录态');
+      refreshAll();
+    }
+
+    window.addEventListener('message', (ev) => {
+      if (ev.data && ev.data.type === 'colab_oauth_ok') {
+        showToast('🎉 Google 官方登录成功，已自动抓取邮箱与 CU 余额！');
+        refreshAll();
+      }
+    });
+
+    async function saveAccountAndConfig() {
+      await saveRouteCfg();
+      await fetch('/api/colab/account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          google_email: document.getElementById('acc-email').value.trim(),
+          colab_notebook_url: document.getElementById('acc-nb-url').value.trim(),
+          remote_admin_url: document.getElementById('acc-admin-url').value.trim(),
+          remote_admin_token: document.getElementById('acc-admin-tok').value.trim(),
+          cf_tunnel_token: document.getElementById('acc-cf-token').value.trim(),
+        }),
+      });
+      showToast('✅ 全部账号与防掉线自愈配置已本地保存！');
+      refreshAll();
+    }
+
+    async function refreshCU() {
+      showToast('🔄 正在调用 Google Colab 官方接口刷新 CU 余额...');
+      const r = await fetch('/api/colab/refresh_cu', { method: 'POST' }).then(x => x.json());
+      showToast(r.cu_info?.source === 'google_oauth_live' ? `✅ 余额：${r.cu_info.cu_balance} CU` : '💡 请先在下方填入有效 Google OAuth Access Token');
+      refreshAll();
+    }
+
+    async function triggerRecover() {
+      const b = document.getElementById('btn-recover');
+      b.disabled = true;
+      showToast('⚡ 正在通过 7861 远程管理基座自动恢复 95GB 语音隧道与 8 位原声...');
+      try {
+        const r = await fetch('/api/colab/recover', { method: 'POST' }).then(x => x.json());
+        showToast(r.ok ? `🎉 恢复成功！${r.new_url || ''}` : `⚠️ ${r.reason || '当前运行时已回收，本机 0.6B 克隆已自动兜底'}`);
+        refreshAll();
+      } finally {
+        b.disabled = false;
+      }
+    }
+
+    async function testVoiceRoute(pid, forceLocal) {
+      const txt = document.getElementById('test-phrase').value.trim() || '唔……大家好呀，听听我现在的声音是不是软软糯糯的呀~';
+      if (forceLocal) {
+        showToast('🧪 正在直接测试本机 127.0.0.1:8766 (Qwen3-TTS-0.6B) 离线实时克隆...');
+        const r = await fetch('http://127.0.0.1:8766/v1/audio/speech', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ input: txt, voice: pid }),
+        });
+        if (r.ok) {
+          const blob = await r.blob();
+          const sec = r.headers.get('x-infer-sec') || '';
+          showToast(`🔊 本机 0.6B 同源实时克隆成功！(耗时 ${sec}s，离开云端照样奶萌)`);
+          playUrl(URL.createObjectURL(blob));
+        } else {
+          showToast('⏳ 本机 0.6B 模型还在首次下载/预热中，请 1 分钟后再点试听');
+        }
+        return;
+      }
+      showToast(`🎙️ 正在实时克隆【${pid}】...`);
+      const r = await fetch('/api/voice_test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ persona_id: pid, emotion: 'happy', custom_text: txt }),
+      }).then(x => x.json());
+      if (r.ok && r.audio_url) {
+        showToast(`🔊 播放中！（引擎：${r.engine}，时长 ${r.duration}s）`);
+        playUrl(r.audio_url);
+      } else {
+        showToast('❌ 试听失败');
+      }
+    }
+
+    async function redesignVoice(pid) {
+      const instruct = document.getElementById('vp-' + pid).value.trim();
+      showToast(`✨ 正在让 95GB GPU 重捏【${pid}】极幼态声线...`);
+      const r = await fetch(`/api/colab/design_voice/${pid}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instruct }),
+      }).then(x => x.json());
+      if (r.ok && r.local_ref_url) {
+        document.getElementById('va-' + pid).src = r.local_ref_url;
+        playUrl(r.local_ref_url);
+        showToast(`✅【${pid}】新声线已捏好并永久保存！`);
+      } else {
+        showToast('❌ 重捏失败：' + (r.error || ''));
+      }
+    }
+
+    async function syncAllRefs() {
+      const r = await fetch('/api/colab/sync_refs', { method: 'POST' }).then(x => x.json());
+      showToast(r.ok ? `✅ 已同步 ${r.synced_count}/8 位参考干声到本地！` : '⚠️ 云端未连接');
+    }
+
+    async function bakeVoices(overwrite) {
+      showToast('🎙️ 正在批量烘焙 48 条离线语音...');
+      const r = await fetch('/api/colab/bake_voices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ overwrite }),
+      }).then(x => x.json());
+      showToast(r.ok ? `✅ 完成！新增 ${r.saved} 条，跳过 ${r.skipped} 条` : '⚠️ 烘焙失败');
+      refreshAll();
+    }
+
+    async function runMatting() {
+      const pid = document.getElementById('mat-char').value;
+      const f = document.getElementById('mat-file').files?.[0];
+      if (!f) return showToast('请先选择图片');
+      const fd = new FormData();
+      fd.append('file', f);
+      showToast('✂️ 正在用 95GB BiRefNet 发丝抠图...');
+      const r = await fetch(`/api/colab/matting/${pid}`, { method: 'POST', body: fd }).then(x => x.json());
+      showToast(r.ok ? `✅ 抠图完成：${r.saved}` : '❌ 抠图失败');
+    }
+
+    refreshAll();
+    setInterval(refreshAll, 10000);
+  </script>
+</body>
+</html>

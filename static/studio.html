@@ -1,0 +1,1538 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>阳光小院 · 视频制作工坊 & B站 AI 托管总控台</title>
+  <style>
+    :root {
+      --bg: linear-gradient(145deg, #f7f4ec 0%, #fffdf8 50%, #f0f6ff 100%);
+      --card: rgba(255, 255, 255, 0.96);
+      --border: #e6d8c3;
+      --ink: #2c1e14;
+      --muted: #6b5d52;
+      --amber: #d97706;
+      --amber-soft: #fef3c7;
+      --bili: #00a1d6;
+      --bili-pink: #fb7299;
+      --green: #16a34a;
+      --red: #dc2626;
+      --indigo: #4f46e5;
+      --radius: 18px;
+      --shadow: 0 10px 28px rgba(84, 56, 28, 0.07);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+      min-height: 100vh;
+      padding: 16px 20px 42px;
+    }
+
+    /* 顶部全局导航栏 */
+    .topbar {
+      max-width: 1460px; margin: 0 auto 14px;
+      background: var(--card); border: 1.5px solid var(--border); border-radius: 20px;
+      padding: 12px 18px; box-shadow: var(--shadow);
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-logo {
+      width: 44px; height: 44px; border-radius: 14px;
+      background: linear-gradient(135deg, #f59e0b, #fb7299);
+      display: flex; align-items: center; justify-content: center; font-size: 22px; color: #fff;
+      box-shadow: 0 6px 16px rgba(245, 158, 11, 0.28);
+    }
+    .brand h1 { font-size: 18px; font-weight: 900; color: #78350f; }
+    .brand p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .nav-links { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .nav-links a {
+      text-decoration: none; font-size: 12.5px; font-weight: 800;
+      padding: 7px 13px; border-radius: 999px; border: 1.5px solid var(--border);
+      background: #fffbeb; color: #92400e; transition: all 0.15s;
+    }
+    .nav-links a:hover { transform: translateY(-1px); border-color: #f59e0b; }
+    .nav-links a.active { background: #1e293b; color: #fff; border-color: #1e293b; }
+    .nav-links a.bili-tag { background: #fff0f5; color: #be185d; border-color: #fbcfe8; }
+
+    /* 主模块 Tab 切换条 */
+    .tab-bar {
+      max-width: 1460px; margin: 0 auto 16px;
+      display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    }
+    .tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+    .tab-btn {
+      border: 1.5px solid var(--border); background: rgba(255,255,255,0.9); color: #574538;
+      padding: 10px 18px; border-radius: 14px; font-size: 14px; font-weight: 900;
+      cursor: pointer; transition: all 0.16s; display: inline-flex; align-items: center; gap: 7px;
+    }
+    .tab-btn:hover { border-color: #f59e0b; color: #78350f; }
+    .tab-btn.active {
+      background: linear-gradient(135deg, #f59e0b, #ea580c);
+      color: #fff; border-color: transparent;
+      box-shadow: 0 8px 20px rgba(234, 88, 12, 0.24);
+    }
+    .tab-btn.bili-tab.active {
+      background: linear-gradient(135deg, #fb7299, #00a1d6);
+      box-shadow: 0 8px 20px rgba(0, 161, 214, 0.24);
+    }
+    .status-strip { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .pill {
+      font-size: 12px; font-weight: 800; padding: 5px 12px; border-radius: 999px;
+      border: 1px solid #cbd5e1; background: #f8fafc; color: #334155;
+    }
+    .pill.ok { background: #dcfce7; color: #15803d; border-color: #86efac; }
+    .pill.warn { background: #fef3c7; color: #b45309; border-color: #fcd34d; }
+    .pill.pink { background: #fce7f3; color: #be185d; border-color: #f9a8d4; }
+    .pill.blue { background: #e0f2fe; color: #0369a1; border-color: #7dd3fc; }
+
+    /* 主内容容器 */
+    .container { max-width: 1460px; margin: 0 auto; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+    .grid-2 { display: grid; grid-template-columns: 450px 1fr; gap: 16px; align-items: start; }
+    .grid-equal { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    @media (max-width: 1120px) {
+      .grid-2, .grid-equal, .grid-3 { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--card); border: 1.5px solid var(--border);
+      border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow);
+      margin-bottom: 14px;
+    }
+    .card:last-child { margin-bottom: 0; }
+    .card.highlight-amber { background: linear-gradient(145deg, #fffdf6 0%, #fffbeb 100%); border-color: #f59e0b; }
+    .card.highlight-bili { background: linear-gradient(145deg, #fff 0%, #f0f9ff 65%, #fff1f5 100%); border-color: #7dd3fc; }
+    .card.highlight-guard { background: linear-gradient(145deg, #f0fdf4 0%, #fffbeb 100%); border-color: #86efac; }
+
+    h2 {
+      font-size: 15.5px; font-weight: 900; color: #78350f; margin-bottom: 12px;
+      display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+    }
+    h3 { font-size: 13.5px; font-weight: 900; color: #44403c; margin: 10px 0 8px; }
+    .sub-tip { font-size: 12px; color: var(--muted); line-height: 1.55; }
+
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+    .row:last-child { margin-bottom: 0; }
+    .field { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 160px; }
+    .field label { font-size: 12px; font-weight: 800; color: #574538; }
+
+    input[type="text"], input[type="password"], input[type="number"], input[type="datetime-local"], select, textarea {
+      width: 100%; background: #fffdf8; border: 1.5px solid #d6c3a5; color: var(--ink);
+      padding: 8.5px 11px; border-radius: 11px; font-size: 13px; font-family: inherit; outline: none;
+      transition: border-color 0.15s;
+    }
+    input:focus, select:focus, textarea:focus { border-color: #d97706; background: #fff; }
+    textarea { resize: vertical; min-height: 76px; line-height: 1.5; }
+
+    button {
+      border: none; border-radius: 11px; padding: 8.5px 14px; font-size: 13px; font-weight: 800;
+      cursor: pointer; color: #fff; background: #2563eb; transition: transform 0.08s, filter 0.14s;
+      display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+    }
+    button:hover { filter: brightness(1.06); }
+    button:active { transform: scale(0.98); }
+    button.green { background: #16a34a; }
+    button.amber { background: #d97706; }
+    button.pink { background: #db2777; }
+    button.bili { background: linear-gradient(135deg, #fb7299, #ec4899); }
+    button.sky { background: #0284c7; }
+    button.red { background: #dc2626; }
+    button.dark { background: #1e293b; }
+    button.slate { background: #64748b; }
+    button.ghost { background: #fff7ed; color: #9a3412; border: 1.5px solid #fed7aa; }
+    button.sm { padding: 5px 10px; font-size: 12px; border-radius: 9px; }
+
+    /* 视频播放器与封面预览 */
+    .video-box {
+      width: 100%; border-radius: 14px; overflow: hidden;
+      background: #141414; border: 2px solid #d97706; position: relative;
+      aspect-ratio: 16 / 9; display: flex; align-items: center; justify-content: center;
+    }
+    .video-box video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+    .cover-thumb {
+      width: 100%; border-radius: 12px; border: 1.5px solid var(--border);
+      aspect-ratio: 16 / 9; object-fit: cover; background: #f8fafc;
+    }
+
+    /* 8位声线网格 & 4种导入方式 */
+    .voice-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: 9px; }
+    .voice-card {
+      background: #fffdf8; border: 1.5px solid #e7d8c1; border-radius: 13px; padding: 10px;
+      display: flex; flex-direction: column; gap: 6px; cursor: pointer; transition: all 0.14s;
+    }
+    .voice-card:hover { border-color: #f59e0b; transform: translateY(-1px); }
+    .voice-card.selected { border-color: #d97706; background: #fffbeb; box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2); }
+    .voice-head { display: flex; align-items: center; gap: 8px; }
+    .voice-head img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; object-position: top; border: 2px solid #d6c3a5; background: #fff; }
+    .voice-name { font-size: 13px; font-weight: 900; }
+    .voice-meta { font-size: 11px; color: var(--muted); }
+
+    .import-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+    .import-tab {
+      background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1;
+      padding: 6px 11px; border-radius: 999px; font-size: 12px; font-weight: 800; cursor: pointer;
+    }
+    .import-tab.active { background: #1e293b; color: #fff; border-color: #1e293b; }
+    .import-pane { display: none; background: #fffdf8; border: 1.5px dashed #d6c3a5; border-radius: 13px; padding: 12px; }
+    .import-pane.active { display: block; }
+
+    /* 分镜脚本卡片 */
+    .scene-list { display: flex; flex-direction: column; gap: 10px; }
+    .scene-item {
+      background: #fffdf8; border: 1.5px solid #e5d5bc; border-radius: 14px; padding: 11px 13px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .scene-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .scene-idx {
+      background: #f59e0b; color: #fff; font-size: 12px; font-weight: 900;
+      padding: 3px 9px; border-radius: 999px;
+    }
+
+    /* 进度条 */
+    .progress-wrap {
+      width: 100%; height: 14px; background: #e2e8f0; border-radius: 999px; overflow: hidden;
+      margin: 8px 0; border: 1px solid #cbd5e1;
+    }
+    .progress-bar {
+      height: 100%; width: 0%; background: linear-gradient(90deg, #f59e0b, #16a34a);
+      transition: width 0.35s ease;
+    }
+
+    /* B站扫码框 & 标签芯片 */
+    .qr-stage {
+      width: 196px; height: 196px; border-radius: 16px; border: 2px dashed #00a1d6;
+      background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 12px; gap: 8px; flex-shrink: 0;
+    }
+    .qr-stage img { width: 168px; height: 168px; object-fit: contain; }
+    .tag-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .tag-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc;
+      padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 800;
+    }
+    .tag-chip span.del { cursor: pointer; font-weight: 900; color: #0284c7; }
+
+    /* 托管开关 & 审批列表 */
+    .switch-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 9px 12px; background: #fffdf8; border: 1.5px solid #e7d8c1; border-radius: 12px;
+      margin-bottom: 8px;
+    }
+    .switch-row:last-child { margin-bottom: 0; }
+    .switch-row strong { font-size: 13px; display: block; }
+    .switch-row small { font-size: 11.5px; color: var(--muted); }
+    input[type="checkbox"].toggle {
+      width: 42px; height: 22px; accent-color: #16a34a; cursor: pointer; flex-shrink: 0;
+    }
+
+    .draft-item, .log-item {
+      background: #fffdf8; border: 1.5px solid #e7d8c1; border-radius: 12px;
+      padding: 10px 12px; margin-bottom: 8px; font-size: 12.5px; line-height: 1.55;
+    }
+    .log-feed { max-height: 310px; overflow-y: auto; padding-right: 4px; }
+
+    .handoff-banner {
+      max-width: 1460px; margin: 0 auto 14px;
+      background: linear-gradient(90deg, #eff6ff, #fffbeb);
+      border: 1.5px solid #93c5fd; border-radius: 14px; padding: 10px 15px;
+      font-size: 12.5px; color: #1e3a8a; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+    }
+
+    .toast {
+      position: fixed; right: 20px; bottom: 20px; z-index: 9999;
+      background: #1e293b; color: #fff; padding: 11px 18px; border-radius: 13px;
+      font-size: 13px; font-weight: 800; box-shadow: 0 12px 28px rgba(15, 23, 42, 0.28);
+      opacity: 0; transform: translateY(10px); pointer-events: none; transition: all 0.2s;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+  <!-- 顶部独立面板与跨服务互联导航 -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-logo">🎬</div>
+      <div>
+        <h1>阳光小院 · 视频工坊 & B站 AI 托管独立面板</h1>
+        <p>独立运行服务 (<b>:8769</b>) · 支持 0.70x~1.65x 无级调节讲解语速 · 可自由互联通用 Colab 算力中枢 (:8768) 与直播面板 (:8765)</p>
+      </div>
+    </div>
+    <div class="nav-links">
+      <a id="nav-live-link" href="http://127.0.0.1:8765/director" target="_blank">🎛️ 连接独立直播面板 (:8765) ↗</a>
+      <a id="nav-hub-link" href="http://127.0.0.1:8768" target="_blank">⚡ 连接通用 Colab 算力中枢 (:8768) ↗</a>
+    </div>
+  </div>
+
+  <!-- 跨服务互联地址配置条 -->
+  <div class="handoff-banner" id="backend-banner">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <span>🔗 <b>跨面板互联配置：</b>通用 Colab 算力中枢</span>
+      <input id="peer-colab-url" value="http://127.0.0.1:8768" style="width:210px;padding:5px 10px;font-size:12px;" />
+      <span>直播面板</span>
+      <input id="peer-live-url" value="http://127.0.0.1:8765" style="width:190px;padding:5px 10px;font-size:12px;" />
+      <button class="amber sm" onclick="savePeerLinks()">💾 保存连接</button>
+    </div>
+    <span class="pill ok" id="backend-status-pill">✅ 全栈后端在线 · 1.18x 轻快成片已就绪</span>
+  </div>
+
+  <!-- 4 大核心 Tab 切换 -->
+  <div class="tab-bar">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('video', this)">🎬 1. 推广视频制作工坊</button>
+      <button class="tab-btn bili-tab" onclick="switchTab('bili-pub', this)">📺 2. B站授权与自动投稿</button>
+      <button class="tab-btn bili-tab" onclick="switchTab('bili-ai', this)">🤖 3. B站 AI 智能托管（看视频/评论）</button>
+      <button class="tab-btn" onclick="switchTab('library', this)">📦 4. 成品视频库 & 资产</button>
+    </div>
+    <div class="status-strip">
+      <span class="pill ok" id="pill-promo-count">🎞️ 已有成片：加载中...</span>
+      <span class="pill warn" id="pill-bili-auth">📺 B站账号：未登录</span>
+      <span class="pill pink" id="pill-agent-state">🤖 AI托管：待机中</span>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- ==================== TAB 1: 推广视频制作工坊 ==================== -->
+    <div id="tab-video" class="tab-panel active">
+      <div class="grid-2">
+        <!-- 左栏：成品实时播放器 + 渲染进度 + 画面配置 -->
+        <div>
+          <div class="card highlight-amber">
+            <h2>
+              <span>🎥 成片预览 & 一键出片</span>
+              <span class="pill ok" id="cur-video-badge">👑 龙宝推广成片 v1</span>
+            </h2>
+            <div class="video-box">
+              <video id="main-video-player" controls preload="metadata" poster="/static/promo/promo_longbao_v1.jpg">
+                <source src="/static/promo/promo_longbao_v1.mp4" type="video/mp4" />
+              </video>
+            </div>
+            <div class="row" style="margin-top:10px;">
+              <a id="btn-dl-video" href="/static/promo/promo_longbao_v1.mp4" download style="text-decoration:none;flex:1;">
+                <button class="green" style="width:100%;">💾 下载 1080P MP4</button>
+              </a>
+              <button class="bili" style="flex:1;" onclick="sendCurrentVideoToBili()">📤 送去 B站投稿区 ➔</button>
+            </div>
+
+            <h3>🚀 全流程渲染控制</h3>
+            <div class="row">
+              <button class="amber" style="flex:1;" onclick="startVideoRender()">🎬 按右侧配置重新渲染成片</button>
+              <button class="ghost" onclick="saveStudioDraft()">💾 存草稿</button>
+            </div>
+            <div class="progress-wrap"><div class="progress-bar" id="render-progress-bar"></div></div>
+            <div class="sub-tip" id="render-status-text">当前状态：已载入最新 1080P 龙宝配音成品，修改脚本/声线/BGM 后点「重新渲染」即可生成新版本。</div>
+          </div>
+
+          <div class="card">
+            <h2><span>⚙️ 画面、比例与字幕参数</span></h2>
+            <div class="row">
+              <div class="field">
+                <label>输出分辨率 & 比例</label>
+                <select id="cfg-resolution">
+                  <option value="1920x1080" selected>🖥️ 1920×1080 横屏（B站推荐）</option>
+                  <option value="1080x1920">📱 1080×1920 竖屏（抖音/B站Story）</option>
+                  <option value="1280x720">⚡ 1280×720 极速预览</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>帧率 FPS</label>
+                <select id="cfg-fps">
+                  <option value="30" selected>30 FPS（流畅省算力）</option>
+                  <option value="60">60 FPS（高帧丝滑）</option>
+                </select>
+              </div>
+            </div>
+            <div class="row">
+              <div class="field">
+                <label>画面采集模式</label>
+                <select id="cfg-visual-mode">
+                  <option value="live_stage_record" selected>🌻 自动实拍 58 部件活体骨骼舞台</option>
+                  <option value="stage_and_director">🎛️ 活体舞台 + 导播台混剪</option>
+                  <option value="custom_clips">🎞️ 使用本地上传素材混剪</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>字幕视觉风格</label>
+                <select id="cfg-sub-style">
+                  <option value="pastoral_cream" selected>🍯 田园奶油描边大字（默认）</option>
+                  <option value="bili_yellow">⚡ B站爆款黑边综艺黄字</option>
+                  <option value="cinema_clean">🎬 电影感极简柔白字</option>
+                </select>
+              </div>
+            </div>
+            <div class="row">
+              <div class="field" style="flex:2;">
+                <label>⏩ 视频讲解音速调节（可无级调速）：<b id="lbl-rate" style="color:#d97706;">1.18x (轻快推荐)</b></label>
+                <input id="cfg-voice-rate" type="range" min="0.70" max="1.65" step="0.01" value="1.18" oninput="updateSpeedLabel(this.value)" />
+                <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
+                  <button type="button" class="ghost sm" onclick="setSpeedPreset(0.95)">0.95x 柔和</button>
+                  <button type="button" class="ghost sm" onclick="setSpeedPreset(1.10)">1.10x 自然</button>
+                  <button type="button" class="amber sm" onclick="setSpeedPreset(1.18)">1.18x 轻快推荐</button>
+                  <button type="button" class="ghost sm" onclick="setSpeedPreset(1.30)">1.30x 紧凑高能</button>
+                  <button type="button" class="green sm" onclick="previewCurrentSpeed()">🔊 按此倍速实时试听</button>
+                </div>
+              </div>
+              <div class="field" style="flex:1;">
+                <label>片尾三连浮窗</label>
+                <select id="cfg-outro-cta">
+                  <option value="true" selected>✅ 开启（点赞投币收藏引导）</option>
+                  <option value="false">关闭</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>
+              <span>🎵 BGM 配乐与混音台</span>
+              <span class="pill ok">无版权原创</span>
+            </h2>
+            <div class="row">
+              <select id="cfg-bgm-select" style="flex:1;"></select>
+              <button class="amber sm" onclick="previewSelectedBgm()">▶️ 试听 BGM</button>
+              <button class="slate sm" onclick="stopAllPreviewAudio()">⏹️ 停</button>
+            </div>
+            <div class="row">
+              <input id="bgm-upload-input" type="file" accept=".mp3,.wav,.flac,.ogg" style="flex:1;" />
+              <button class="dark sm" onclick="uploadCustomBgm()">📤 上传自定义 BGM</button>
+            </div>
+            <div class="row">
+              <div class="field">
+                <label>BGM 音量：<b id="lbl-bgm-vol">36%</b></label>
+                <input id="cfg-bgm-vol" type="range" min="0" max="100" value="36" oninput="document.getElementById('lbl-bgm-vol').textContent=this.value+'%'" />
+              </div>
+              <div class="field">
+                <label>人声自动闪避 (Ducking)</label>
+                <select id="cfg-ducking">
+                  <option value="true" selected>✅ 开启（说话自动压低 BGM）</option>
+                  <option value="false">关闭</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右栏：多声线导入库 + 分镜脚本时间轴 -->
+        <div>
+          <div class="card">
+            <h2>
+              <span>🎙️ 声线库 & 4 种声线导入方式（默认已选：👑 龙宝）</span>
+              <span class="pill blue" id="selected-voice-pill">当前主配音：👑 龙宝</span>
+            </h2>
+            <div class="voice-grid" id="voice-grid"></div>
+
+            <h3>📥 导入新声线 / 切换配音引擎</h3>
+            <div class="import-tabs">
+              <span class="import-tab active" onclick="switchImportTab('imp-ref', this)">1️⃣ 上传参考干声克隆 (.wav/.mp3)</span>
+              <span class="import-tab" onclick="switchImportTab('imp-project', this)">2️⃣ 一键同步项目 8 位角色声线</span>
+              <span class="import-tab" onclick="switchImportTab('imp-remote', this)">3️⃣ 从 Colab / 外部 TTS 导入</span>
+              <span class="import-tab" onclick="switchImportTab('imp-edge', this)">4️⃣ 自定义 Edge-TTS 调音预设</span>
+            </div>
+
+            <div id="imp-ref" class="import-pane active">
+              <div class="row">
+                <input id="imp-voice-name" type="text" placeholder="新声线名称（如：龙宝温柔版 / 旁白小姐姐）" style="width:220px;" />
+                <input id="imp-voice-file" type="file" accept=".wav,.mp3,.flac" style="flex:1;" />
+              </div>
+              <div class="row">
+                <input id="imp-voice-reftext" type="text" placeholder="输入这段干声对应的文字（用于 Qwen3-TTS / GPT-SoVITS 零样本克隆对齐）" style="flex:1;" />
+                <button class="green" onclick="importLocalVoiceRef()">📤 导入并锁定声线</button>
+              </div>
+            </div>
+
+            <div id="imp-project" class="import-pane">
+              <p class="sub-tip" style="margin-bottom:8px;">直接拉取本项目 <code>static/voice_refs/*_baby_ref.wav</code> 全部 8 位角色干声与 48 条 95GB 烘焙语音库，支持给不同分镜混用多位角色接力解说！</p>
+              <button class="amber" onclick="syncProjectVoices()">🔄 立即同步全部 8 位角色声线</button>
+            </div>
+
+            <div id="imp-remote" class="import-pane">
+              <div class="row">
+                <input id="imp-remote-url" type="text" placeholder="外部 TTS / 95GB Colab 隧道地址 (如 https://xxx.trycloudflare.com)" style="flex:1;" />
+                <input id="imp-remote-key" type="password" placeholder="API Token (可选)" style="width:170px;" />
+                <button class="sky" onclick="importRemoteTts()">☁️ 检测并导入云端声线</button>
+              </div>
+            </div>
+
+            <div id="imp-edge" class="import-pane">
+              <div class="row">
+                <input id="imp-edge-name" type="text" placeholder="预设名称（如：龙宝奶萌标准）" style="width:180px;" />
+                <select id="imp-edge-base" style="flex:1;">
+                  <option value="zh-CN-XiaoxiaoNeural">晓晓 (女声·甜美灵动·龙宝同款)</option>
+                  <option value="zh-TW-HsiaoYuNeural">晓雨 (台湾女声·软绵温柔·葵葵同款)</option>
+                  <option value="zh-CN-XiaoyiNeural">晓伊 (少女声·俏皮活力)</option>
+                  <option value="zh-CN-YunxiNeural">云希 (清爽少年音)</option>
+                  <option value="zh-CN-YunjianNeural">云健 (热血解说男声)</option>
+                </select>
+                <input id="imp-edge-pitch" type="text" value="+11Hz" style="width:85px;" title="音调偏移" />
+                <input id="imp-edge-rate" type="text" value="-5%" style="width:85px;" title="语速偏移" />
+                <button class="indigo" onclick="saveEdgePreset()">💾 添加为声线</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>
+              <span>📝 分镜脚本时间轴（可逐镜指定不同声线 & 台词）</span>
+              <div style="display:flex;gap:6px;">
+                <button class="indigo sm" onclick="aiGenerateScript()">✨ AI 生成爆款脚本</button>
+                <button class="green sm" onclick="addSceneItem()">➕ 新增分镜</button>
+              </div>
+            </h2>
+            <div class="row">
+              <div class="field">
+                <label>推广视频主标题</label>
+                <input id="video-title" type="text" value="会自己聊天的 2D 活体 AI 娘直播间！58部件真骨骼+红蓝PK+长期记忆库" />
+              </div>
+              <div class="field" style="max-width:210px;">
+                <label>配音引擎优先级</label>
+                <select id="cfg-tts-engine">
+                  <option value="auto" selected>⚡ 自动（95GB云端 ➔ 同款参数）</option>
+                  <option value="colab_clone">🔥 强制 95GB 云端真声克隆</option>
+                  <option value="edge_preset">🎙️ 极速龙宝同款参数</option>
+                </select>
+              </div>
+            </div>
+            <div class="scene-list" id="scene-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== TAB 2: B站账号授权与自动投稿 ==================== -->
+    <div id="tab-bili-pub" class="tab-panel">
+      <div class="grid-2">
+        <!-- 左栏：B站登录授权（扫码 / 账号密码 / Cookie） -->
+        <div>
+          <div class="card highlight-bili">
+            <h2>
+              <span>🔐 1. Bilibili 账号登录授权</span>
+              <span class="pill warn" id="bili-login-badge">未登录</span>
+            </h2>
+            <div class="import-tabs">
+              <span class="import-tab active" onclick="switchBiliAuthTab('auth-qr', this)">📱 官方扫码登录（最稳推荐）</span>
+              <span class="import-tab" onclick="switchBiliAuthTab('auth-pwd', this)">🔑 账号密码登录</span>
+              <span class="import-tab" onclick="switchBiliAuthTab('auth-cookie', this)">🍪 导入 Cookie / biliup凭证</span>
+            </div>
+
+            <div id="auth-qr" class="import-pane active">
+              <div class="row" style="align-items:flex-start;">
+                <div class="qr-stage" id="bili-qr-box">
+                  <span style="font-size:32px;">📱</span>
+                  <span class="sub-tip">点击右侧按钮生成<br/>B站官方登录二维码</span>
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:9px;">
+                  <p class="sub-tip">使用手机 <b>哔哩哔哩 APP</b> 扫一扫确认登录，Carbon 后端将自动把加密凭证持久化至本地 <code>bili_cookies.json</code>（兼容 <code>biliup</code> 多线路高速上传），防风控最稳！</p>
+                  <button class="bili" onclick="requestBiliQr()">🔄 生成 / 刷新登录二维码</button>
+                  <button class="slate sm" onclick="checkBiliSession()">🔍 检测当前登录状态</button>
+                  <div class="sub-tip" id="bili-qr-status">等待发起扫码...</div>
+                </div>
+              </div>
+            </div>
+
+            <div id="auth-pwd" class="import-pane">
+              <div class="row">
+                <div class="field">
+                  <label>B站手机号 / 邮箱账号</label>
+                  <input id="bili-username" type="text" placeholder="输入 B站登录手机号或邮箱" />
+                </div>
+              </div>
+              <div class="row">
+                <div class="field">
+                  <label>登录密码</label>
+                  <input id="bili-password" type="password" placeholder="仅传给本机后端换取登录凭证，绝不明文落盘" />
+                </div>
+              </div>
+              <div class="row">
+                <button class="sky" style="flex:1;" onclick="loginBiliPassword()">🔑 账号密码登录</button>
+              </div>
+              <p class="sub-tip" style="margin-top:6px;">⚠️ 提示：若触发 B 站极验滑块安全校验，请在弹窗页面手动完成人机验证（本系统严禁绕过验证码）；推荐优先用扫码登录免滑块！</p>
+            </div>
+
+            <div id="auth-cookie" class="import-pane">
+              <div class="field" style="margin-bottom:8px;">
+                <label>粘贴浏览器 Cookie 或 biliup 的 cookies.json 内容</label>
+                <textarea id="bili-cookie-raw" placeholder="包含 SESSDATA=...; bili_jct=...; DedeUserID=... 或 JSON 格式"></textarea>
+              </div>
+              <button class="green" onclick="importBiliCookie()">🍪 导入并验证凭证</button>
+            </div>
+
+            <div id="bili-account-card" style="display:none;margin-top:12px;padding:11px;border-radius:12px;background:#f0fdf4;border:1.5px solid #86efac;">
+              <div class="row" style="justify-content:space-between;">
+                <span id="bili-user-info" style="font-weight:900;color:#166534;">✅ 已登录：--</span>
+                <button class="red sm" onclick="logoutBili()">退出账号</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2><span>🖼️ 投稿封面预览</span></h2>
+            <img id="bili-cover-preview" class="cover-thumb" src="/static/promo/promo_longbao_v1.jpg" alt="B站封面" />
+            <div class="row" style="margin-top:10px;">
+              <input id="bili-cover-file" type="file" accept="image/*" style="flex:1;" onchange="previewLocalCover(this)" />
+              <button class="amber sm" onclick="extractAutoCover()">✨ 自动抽帧封面</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右栏：自动投稿表单 + 投稿记录 -->
+        <div>
+          <div class="card">
+            <h2>
+              <span>📤 2. 一键自动投稿配置（支持 biliup / stream_gears 多线路分片上传）</span>
+              <button class="indigo sm" onclick="aiGenerateBiliMeta()">✨ AI 生成爆款标题与标签</button>
+            </h2>
+            <div class="row">
+              <div class="field">
+                <label>选择要投稿的成片视频</label>
+                <select id="bili-video-select"></select>
+              </div>
+              <div class="field" style="max-width:190px;">
+                <label>上传线路 (biliup)</label>
+                <select id="bili-upload-line">
+                  <option value="auto" selected>⚡ 自动测速最优线路</option>
+                  <option value="bda2">百度云 bda2（推荐）</option>
+                  <option value="ws">网宿 ws</option>
+                  <option value="qn">七牛 qn</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="field">
+                <label>稿件标题（最多 80 字 · 已输入 <span id="title-len">0</span>/80）</label>
+                <input id="bili-title" type="text" maxlength="80" value="我给AI娘做了58部件活体骨骼！会自己眨眼斗嘴、红蓝PK投票、还能记住每个送小心心的人！" oninput="document.getElementById('title-len').textContent=this.value.length" />
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="field">
+                <label>投稿分区</label>
+                <select id="bili-tid">
+                  <option value="231" selected>科技 · 计算机技术 / AI（推荐）</option>
+                  <option value="230">科技 · 软件应用</option>
+                  <option value="207">知识 · 人工智能 / 财经科普</option>
+                  <option value="21">生活 · 日常</option>
+                  <option value="253">动画 · 虚拟UP主 / 动漫杂谈</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>稿件类型</label>
+                <select id="bili-copyright">
+                  <option value="1" selected>✨ 自制原创</option>
+                  <option value="2">转载</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>定时发布（留空则立即发布）</label>
+                <input id="bili-schedule-time" type="datetime-local" />
+              </div>
+            </div>
+
+            <div class="field" style="margin-bottom:10px;">
+              <label>视频标签 Tags（回车添加，最多 10 个）</label>
+              <input id="bili-tag-input" type="text" placeholder="输入标签按回车添加..." onkeydown="if(event.key==='Enter'){event.preventDefault();addBiliTag();}" />
+              <div class="tag-chips" id="bili-tag-chips"></div>
+            </div>
+
+            <div class="field" style="margin-bottom:10px;">
+              <label>视频简介</label>
+              <textarea id="bili-desc" rows="4">推开阳光小院的小木门！今天由白龙团长「龙宝」亲自配音带大家逛一逛我们自研的 2D 活体骨骼 AI 娘互动直播间：
+✨ 8 位性格迥异的 58 部件真骨骼 AI 伙伴轮流值班
+⚔️ 公屏弹幕实时触发红蓝辩论 PK 投票与观众出题 3 人接力吐槽
+💖 独立长期记忆库：送一颗小心心请伙伴上台，她会永久记住你的名字！
+喜欢这群可爱小家伙的话记得一键三连，评论区告诉龙宝你想看谁上台呀~</textarea>
+            </div>
+
+            <div class="field" style="margin-bottom:12px;">
+              <label>粉丝动态推荐语（随投稿同步发动态）</label>
+              <input id="bili-dynamic" type="text" value="龙宝带着阳光小院的 8 位活体 AI 小伙伴来 B 站报道啦！快来看看会眨眼会互怼还会记名字的 AI 直播间~" />
+            </div>
+
+            <div class="row">
+              <button class="bili" style="flex:1;padding:11px 18px;font-size:14.5px;" onclick="submitBiliUpload()">🚀 一键自动投稿到 Bilibili</button>
+            </div>
+            <div class="progress-wrap"><div class="progress-bar" id="bili-upload-bar"></div></div>
+            <div class="sub-tip" id="bili-upload-status">就绪：完成左侧 B 站登录后即可一键自动分片投稿。</div>
+          </div>
+
+          <div class="card">
+            <h2><span>📜 最近投稿记录</span></h2>
+            <div id="bili-history-list" class="sub-tip">暂无已投稿记录（接入 Carbon 后端后自动展示 BV 号、审核状态与播放数据）。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== TAB 3: B站 AI 智能托管中心 ==================== -->
+    <div id="tab-bili-ai" class="tab-panel">
+      <div class="card highlight-guard">
+        <h2>
+          <span>🤖 B站 AI 智能托管总开关（参考 bilibili_learning_bot + BiliCommentBot + BiliInsight 架构）</span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="green" id="btn-agent-start" onclick="toggleBiliAgent(true)">▶️ 启动 AI 托管巡航</button>
+            <button class="red" id="btn-agent-stop" onclick="toggleBiliAgent(false)">🛑 一键急停托管</button>
+            <button class="amber" onclick="saveBiliAgentConfig()">💾 保存全部托管策略</button>
+          </div>
+        </h2>
+        <p class="sub-tip">
+          ✅ <b>合规安全设计</b>：本托管模块严格聚焦于 <b>① 自己稿件评论区自动暖心回复（楼中楼陪聊）</b>、<b>② 按兴趣自动看视频提取字幕/写学习笔记并整理收藏夹</b>、<b>③ 高质量互动评论草稿箱（支持人工一键审批发出，彻底杜绝垃圾刷屏/封号风险）</b>。
+        </p>
+      </div>
+
+      <div class="grid-3">
+        <!-- 模块 1：AI 自动看视频 & 笔记学习 -->
+        <div class="card">
+          <h2><span>👀 1. AI 自动看视频 & 观影笔记</span></h2>
+          <div class="switch-row">
+            <div><strong>开启自动刷视频学习</strong><small>模拟真人观看节奏并提取字幕生成摘要笔记</small></div>
+            <input type="checkbox" class="toggle" id="ag-watch-enable" checked />
+          </div>
+          <div class="switch-row">
+            <div><strong>高相关优质视频自动收藏</strong><small>命中兴趣主题自动存入指定收藏夹</small></div>
+            <input type="checkbox" class="toggle" id="ag-auto-fav" checked />
+          </div>
+          <div class="field" style="margin-bottom:8px;">
+            <label>巡航内容来源</label>
+            <select id="ag-watch-source">
+              <option value="recommend_and_keywords" selected>🎯 首页推荐 + 关键词精准筛选</option>
+              <option value="following">👥 仅看已关注 UP 主新动态</option>
+              <option value="keywords_only">🔎 仅按下方兴趣关键词搜索</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:8px;">
+            <label>兴趣关键词（逗号分隔）</label>
+            <input id="ag-keywords" type="text" value="AI直播,虚拟主播,Live2D,AI Agent,大模型应用,独立开发" />
+          </div>
+          <div class="row">
+            <div class="field"><label>单次观看最短(秒)</label><input id="ag-watch-min" type="number" value="45" min="15" max="300" /></div>
+            <div class="field"><label>单次观看最长(秒)</label><input id="ag-watch-max" type="number" value="150" min="30" max="600" /></div>
+          </div>
+        </div>
+
+        <!-- 模块 2：AI 智能评论与评论区托管 -->
+        <div class="card">
+          <h2><span>💬 2. 智能评论 & 自己评论区陪聊</span></h2>
+          <div class="switch-row">
+            <div><strong>自动回复自己视频评论区</strong><small>支持楼中楼追问，自动用龙宝/开发者口吻互动</small></div>
+            <input type="checkbox" class="toggle" id="ag-reply-own" checked />
+          </div>
+          <div class="switch-row">
+            <div><strong>看完视频生成互动评论</strong><small>基于视频真实内容/字幕写出走心评论，拒绝水评</small></div>
+            <input type="checkbox" class="toggle" id="ag-comment-watch" checked />
+          </div>
+          <div class="field" style="margin-bottom:8px;">
+            <label>外部评论发送模式（防风控核心）</label>
+            <select id="ag-comment-mode">
+              <option value="approval_queue" selected>🛡️ 人工审批草稿箱（最安全·零封号风险）</option>
+              <option value="auto_strict">⚡ 严控自动发送（遵守每日频控上限）</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:8px;">
+            <label>AI 回复人设口吻</label>
+            <select id="ag-persona">
+              <option value="longbao" selected>👑 龙宝团长（软萌傲娇·亲切有梗）</option>
+              <option value="dev_friendly">🛠️ 真诚独立开发者（干货友好）</option>
+              <option value="kui">🌻 葵葵小乖（温柔礼貌治愈）</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>自定义评论风格指令（System Prompt）</label>
+            <textarea id="ag-prompt" rows="2">结合视频具体内容发表真诚、有共鸣的短评（15~45字），严禁发硬广、严禁引导加群或留联系方式，像真实热心B站观众一样交流。</textarea>
+          </div>
+        </div>
+
+        <!-- 模块 3：防风控安全护盾 -->
+        <div class="card">
+          <h2><span>🛡️ 3. B站防风控安全护盾</span></h2>
+          <div class="row">
+            <div class="field"><label>每日看视频上限</label><input id="ag-max-watch" type="number" value="20" min="1" max="60" /></div>
+            <div class="field"><label>每日发评论上限</label><input id="ag-max-comment" type="number" value="10" min="1" max="30" /></div>
+          </div>
+          <div class="row">
+            <div class="field"><label>动作最小冷却(秒)</label><input id="ag-cd-min" type="number" value="90" min="30" max="600" /></div>
+            <div class="field"><label>动作最大冷却(秒)</label><input id="ag-cd-max" type="number" value="260" min="60" max="1200" /></div>
+          </div>
+          <div class="row">
+            <div class="field"><label>活跃开始时段</label><input id="ag-hour-start" type="text" value="09:00" /></div>
+            <div class="field"><label>深夜自动休眠</label><input id="ag-hour-end" type="text" value="23:30" /></div>
+          </div>
+          <div class="switch-row">
+            <div><strong>异常/风控自动熔断急停</strong><small>遇到 B 站风控码立即暂停全部操作并标红告警</small></div>
+            <input type="checkbox" class="toggle" id="ag-circuit-break" checked />
+          </div>
+          <div class="switch-row">
+            <div><strong>严禁重复评论同一视频</strong><small>SQLite 永久记录已互动 BV 号，杜绝刷屏</small></div>
+            <input type="checkbox" class="toggle" id="ag-dedup-bv" checked />
+          </div>
+        </div>
+      </div>
+
+      <!-- 实时草稿审批箱 + AI 观影日志流 -->
+      <div class="grid-equal">
+        <div class="card">
+          <h2>
+            <span>📝 待审批 AI 评论草稿箱</span>
+            <button class="slate sm" onclick="refreshBiliAgentFeed()">🔄 刷新草稿</button>
+          </h2>
+          <div id="agent-draft-list" class="log-feed">
+            <div class="draft-item">
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                <b>🎬 示例草稿 · [BV演示] 看完《2D虚拟主播骨骼驱动教程》后 AI 生成</b>
+                <span class="pill warn">待审批预览</span>
+              </div>
+              <p style="color:#44403c;margin-bottom:8px;">“把 58 个图层拆成弹簧骨骼后眨眼和甩尾真的丝滑太多了！我们最近也在折腾类似的小院 AI 互动项目，受益匪浅~”</p>
+              <div class="row">
+                <button class="green sm" onclick="approveDraft('demo_1')">✅ 批准发送</button>
+                <button class="red sm" onclick="rejectDraft('demo_1')">🗑️ 忽略</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>
+            <span>📡 AI 托管实时观影笔记 & 回复日志</span>
+            <span class="pill blue" id="agent-stats-pill">今日观看 0 · 回复 0</span>
+          </h2>
+          <div id="agent-log-list" class="log-feed">
+            <div class="log-item">⏳ <b>等待 Carbon 接入 B 站 AI 托管后端</b>：接入后这里将实时滚动展示 AI 看过的视频摘要笔记、收藏记录及回复粉丝评论的完整流水。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== TAB 4: 成品视频库与资产 ==================== -->
+    <div id="tab-library" class="tab-panel">
+      <div class="card">
+        <h2>
+          <span>📦 已生成的推广成片与 BGM 资产库</span>
+          <button class="amber sm" onclick="loadBootstrap()">🔄 刷新文件列表</button>
+        </h2>
+        <div id="library-grid" class="grid-3"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const DRAFT_KEY = "sunny_garden_studio_draft_v1";
+    let voicesList = [];
+    let videosList = [];
+    let bgmList = [];
+    let selectedVoiceId = "gpt";
+    let previewAudio = null;
+    let biliTags = ["AI直播", "虚拟主播", "2D骨骼", "AI娘", "独立开发", "人工智能", "大模型", "黑科技"];
+    let qrPollTimer = null;
+
+    let scenes = [
+      {
+        id: "s1",
+        tag: "👑 阳光小院 · 2D活体AI剧场",
+        voice_id: "gpt",
+        mode: "opening_3p",
+        emotion: "happy",
+        text: "推开小木门啦！首先今天阳光超舒服，其次戴好金皇冠的龙宝来陪大家聊天咯！",
+      },
+      {
+        id: "s2",
+        tag: "✨ 58部件真骨骼 · 8位性格AI轮流值班",
+        voice_id: "gpt",
+        mode: "cast_3p",
+        emotion: "excited",
+        text: "这里可不是呆板的静态贴图哦！小院里住着8位性格各异的58部件活体宝宝，会自己呼吸眨眼、害羞脸红，还会按队列轮流上台斗嘴聊天！",
+      },
+      {
+        id: "s3",
+        tag: "⚔️ 弹幕实时互动 · 红蓝辩论PK投票",
+        voice_id: "gpt",
+        mode: "pk_2p",
+        emotion: "excited",
+        text: "更上头的是全自动弹幕玩法！公屏发1和2就能实时投票决定红蓝PK胜负，发送出题还能让三位宝宝排着队接力吐槽！",
+      },
+      {
+        id: "s4",
+        tag: "💖 独立长期记忆库 · 95GB真声克隆",
+        voice_id: "gpt",
+        mode: "memory_2p",
+        emotion: "love",
+        text: "而且每位小伙伴都有自己的独立长期记忆库！送一颗小心心请小屋里的伙伴上台，她就会永久记住你的名字，下次进房主动打招呼哦！",
+      },
+      {
+        id: "s5",
+        tag: "🛠️ 全栈自研 · 抖音直连 + 自动闭麦",
+        voice_id: "gpt",
+        mode: "solo_outro",
+        emotion: "talking",
+        text: "免装第三方软件就能直连实时弹幕与礼物，支持开播自动硬件闭麦和真人随时开麦接管，全套工程还在持续进化中哦！",
+      },
+      {
+        id: "s6",
+        tag: "🌟 喜欢就一键三连 · 来直播间喊龙宝玩",
+        voice_id: "gpt",
+        mode: "outro_card",
+        emotion: "happy",
+        text: "如果觉得我们这群小家伙可爱又有趣的话，记得点赞投币收藏一键三连支持一下，在评论区告诉龙宝你想看谁上台呀，拜拜！",
+      },
+    ];
+
+    function showToast(msg) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      clearTimeout(window._tTimer);
+      window._tTimer = setTimeout(() => el.classList.remove("show"), 3000);
+    }
+
+    function escapeHtml(s) {
+      return String(s || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    function stopAllPreviewAudio() {
+      if (previewAudio) { try { previewAudio.pause(); previewAudio.currentTime = 0; } catch (_) {} previewAudio = null; }
+    }
+
+    function playAudioUrl(url, label) {
+      if (!url) return showToast("⚠️ 该条目暂无可试听音频");
+      stopAllPreviewAudio();
+      previewAudio = new Audio(url);
+      previewAudio.play().then(() => showToast(`🎵 正在试听：${label}`)).catch(() => showToast("⚠️ 音频播放受浏览器限制，请再点一次"));
+    }
+
+    function switchTab(id, btn) {
+      document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      document.getElementById("tab-" + id)?.classList.add("active");
+      if (btn) btn.classList.add("active");
+    }
+
+    function switchImportTab(id, btn) {
+      const card = btn.closest(".card");
+      card.querySelectorAll(".import-tab").forEach(t => t.classList.remove("active"));
+      card.querySelectorAll(".import-pane").forEach(p => p.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById(id)?.classList.add("active");
+    }
+
+    function switchBiliAuthTab(id, btn) { switchImportTab(id, btn); }
+
+    async function callCarbonApi(path, method = "POST", body = null, isFormData = false) {
+      try {
+        const opts = { method };
+        if (body !== null) {
+          if (isFormData) {
+            opts.body = body;
+          } else {
+            opts.headers = { "Content-Type": "application/json" };
+            opts.body = JSON.stringify(body);
+          }
+        }
+        const r = await fetch(path, opts);
+        if (r.status === 404 || r.status === 405 || r.status === 501) {
+          showToast("⏳ 接口 " + path + " 待 Carbon 按交接契约单实现后端！");
+          return { ok: false, pending_carbon: true, status: r.status };
+        }
+        const data = await r.json().catch(() => ({ ok: r.ok }));
+        return data;
+      } catch (err) {
+        showToast("⚠️ 请求失败：" + err.message);
+        return { ok: false, error: err.message };
+      }
+    }
+
+    /* ==================== 渲染声线库、分镜、标签与作品库 ==================== */
+    function renderVoices() {
+      const box = document.getElementById("voice-grid");
+      box.innerHTML = voicesList.map(v => `
+        <div class="voice-card ${v.id === selectedVoiceId ? 'selected' : ''}" onclick="selectPrimaryVoice('${v.id}')">
+          <div class="voice-head">
+            <img src="${v.avatar_url || '/static/avatars_coop/gpt.png'}" onerror="this.src='/static/avatars_coop/gpt.png'" />
+            <div>
+              <div class="voice-name" style="color:${v.color || '#78350f'}">${v.prop_emoji || '🎙️'} ${escapeHtml(v.nickname)}</div>
+              <div class="voice-meta">${escapeHtml(v.edge_voice || '克隆干声')}</div>
+            </div>
+          </div>
+          <div class="row" style="margin-top:2px;">
+            <button class="amber sm" style="flex:1;" onclick="event.stopPropagation();playAudioUrl('${v.preview_url}','${escapeHtml(v.nickname)} 声线')">▶️ 试听</button>
+            <button class="ghost sm" onclick="event.stopPropagation();applyVoiceToAllScenes('${v.id}')">全片用她</button>
+          </div>
+        </div>
+      `).join("");
+      const cur = voicesList.find(v => v.id === selectedVoiceId);
+      document.getElementById("selected-voice-pill").textContent = cur ? `当前主配音：${cur.prop_emoji} ${cur.nickname}` : "当前主配音：👑 龙宝";
+    }
+
+    function selectPrimaryVoice(pid) {
+      selectedVoiceId = pid;
+      renderVoices();
+    }
+
+    function applyVoiceToAllScenes(pid) {
+      selectedVoiceId = pid;
+      scenes.forEach(s => s.voice_id = pid);
+      renderVoices();
+      renderScenes();
+      const v = voicesList.find(x => x.id === pid);
+      showToast(`🎙️ 已将全部 ${scenes.length} 个分镜配音切换为【${v ? v.nickname : pid}】！`);
+    }
+
+    function renderScenes() {
+      const box = document.getElementById("scene-list");
+      const voiceOpts = (curId) => voicesList.map(v =>
+        `<option value="${v.id}" ${v.id === curId ? 'selected' : ''}>${v.prop_emoji || '🎙️'} ${escapeHtml(v.nickname)}</option>`
+      ).join("");
+
+      box.innerHTML = scenes.map((sc, i) => `
+        <div class="scene-item">
+          <div class="scene-top">
+            <span class="scene-idx">镜头 ${i + 1}</span>
+            <input type="text" value="${escapeHtml(sc.tag)}" style="flex:1;min-width:160px;" onchange="scenes[${i}].tag=this.value" placeholder="左上角章节角标" />
+            <select style="width:130px;" onchange="scenes[${i}].voice_id=this.value">${voiceOpts(sc.voice_id)}</select>
+            <select style="width:140px;" onchange="scenes[${i}].mode=this.value">
+              <option value="opening_3p" ${sc.mode==='opening_3p'?'selected':''}>3人阳光开场</option>
+              <option value="cast_3p" ${sc.mode==='cast_3p'?'selected':''}>全明星轮换</option>
+              <option value="pk_2p" ${sc.mode==='pk_2p'?'selected':''}>红蓝PK投票</option>
+              <option value="memory_2p" ${sc.mode==='memory_2p'?'selected':''}>小心心记忆库</option>
+              <option value="solo_outro" ${sc.mode==='solo_outro'?'selected':''}>1人正脸特写</option>
+              <option value="outro_card" ${sc.mode==='outro_card'?'selected':''}>三连结尾卡片</option>
+            </select>
+            <button class="red sm" onclick="removeScene(${i})">删</button>
+          </div>
+          <textarea rows="2" onchange="scenes[${i}].text=this.value" placeholder="输入本镜头旁白台词...">${escapeHtml(sc.text)}</textarea>
+        </div>
+      `).join("");
+    }
+
+    function addSceneItem() {
+      scenes.push({
+        id: "s_" + Date.now(),
+        tag: "✨ 新增亮点展示",
+        voice_id: selectedVoiceId,
+        mode: "opening_3p",
+        emotion: "happy",
+        text: "这里是新增的精彩分镜旁白，可以自由编辑哦~",
+      });
+      renderScenes();
+    }
+
+    function removeScene(idx) {
+      if (scenes.length <= 1) return showToast("⚠️ 至少保留 1 个分镜");
+      scenes.splice(idx, 1);
+      renderScenes();
+    }
+
+    function renderBiliTags() {
+      document.getElementById("bili-tag-chips").innerHTML = biliTags.map((t, i) =>
+        `<span class="tag-chip">#${escapeHtml(t)} <span class="del" onclick="removeBiliTag(${i})">×</span></span>`
+      ).join("");
+    }
+    function addBiliTag() {
+      const inp = document.getElementById("bili-tag-input");
+      const val = inp.value.trim().replace(/^#/, "");
+      if (!val) return;
+      if (biliTags.length >= 10) return showToast("⚠️ B 站最多支持 10 个标签");
+      if (!biliTags.includes(val)) biliTags.push(val);
+      inp.value = "";
+      renderBiliTags();
+    }
+    function removeBiliTag(i) { biliTags.splice(i, 1); renderBiliTags(); }
+
+    function renderVideoAndBgmSelectors() {
+      const vSel = document.getElementById("bili-video-select");
+      vSel.innerHTML = videosList.length
+        ? videosList.map(v => `<option value="${v.filename}">🎬 ${escapeHtml(v.filename)} (${v.size_mb} MB · ${v.updated_at})</option>`).join("")
+        : `<option value="promo_longbao_v1.mp4">🎬 promo_longbao_v1.mp4 (待生成)</option>`;
+
+      const bSel = document.getElementById("cfg-bgm-select");
+      bSel.innerHTML = bgmList.length
+        ? bgmList.map(b => `<option value="${b.url}">🎵 ${escapeHtml(b.name)} (${b.size_kb} KB)</option>`).join("")
+        : `<option value="/static/promo/bgm_sunny_garden_musicbox.wav">🎵 bgm_sunny_garden_musicbox.wav (原创田园八音盒)</option>`;
+
+      document.getElementById("pill-promo-count").textContent = `🎞️ 已有成片：${videosList.length} 支`;
+
+      // 作品库渲染
+      const lib = document.getElementById("library-grid");
+      if (!videosList.length) {
+        lib.innerHTML = `<div class="sub-tip">暂无成片，请在「1. 推广视频制作工坊」点击渲染生成。</div>`;
+      } else {
+        lib.innerHTML = videosList.map(v => `
+          <div class="card" style="margin-bottom:0;">
+            <img class="cover-thumb" src="${v.cover_url || '/static/promo/promo_longbao_v1.jpg'}" onerror="this.style.display='none'" />
+            <h3 style="margin-top:8px;">🎬 ${escapeHtml(v.filename)}</h3>
+            <p class="sub-tip" style="margin-bottom:8px;">大小：${v.size_mb} MB · 更新：${v.updated_at}</p>
+            <div class="row">
+              <button class="amber sm" onclick="loadVideoIntoPlayer('${v.url}','${v.cover_url}','${escapeHtml(v.filename)}')">▶️ 播放</button>
+              <a href="${v.url}" download style="text-decoration:none;"><button class="green sm">💾 下载</button></a>
+              <button class="bili sm" onclick="pickVideoForBili('${escapeHtml(v.filename)}','${v.cover_url}')">📤 投稿B站</button>
+            </div>
+          </div>
+        `).join("");
+      }
+
+      if (videosList.length) {
+        const first = videosList[0];
+        loadVideoIntoPlayer(first.url, first.cover_url, first.filename, false);
+      }
+    }
+
+    function loadVideoIntoPlayer(url, cover, name, switchToVideo = true) {
+      const vp = document.getElementById("main-video-player");
+      if (cover) vp.poster = cover;
+      vp.src = url + "?t=" + Date.now();
+      document.getElementById("btn-dl-video").href = url;
+      document.getElementById("cur-video-badge").textContent = "🎬 " + name;
+      if (switchToVideo) {
+        document.querySelectorAll(".tab-btn")[0].click();
+        vp.play().catch(() => {});
+      }
+    }
+
+    function pickVideoForBili(filename, cover) {
+      document.getElementById("bili-video-select").value = filename;
+      if (cover) document.getElementById("bili-cover-preview").src = cover;
+      document.querySelectorAll(".tab-btn")[1].click();
+      showToast(`📤 已将【${filename}】载入 B 站自动投稿区！`);
+    }
+
+    function sendCurrentVideoToBili() {
+      const first = videosList[0];
+      pickVideoForBili(first ? first.filename : "promo_longbao_v1.mp4", first ? first.cover_url : "/static/promo/promo_longbao_v1.jpg");
+    }
+
+    function previewSelectedBgm() {
+      const sel = document.getElementById("cfg-bgm-select");
+      playAudioUrl(sel.value, sel.options[sel.selectedIndex]?.text || "原创 BGM");
+    }
+
+    function previewLocalCover(inp) {
+      const f = inp.files?.[0];
+      if (!f) return;
+      document.getElementById("bili-cover-preview").src = URL.createObjectURL(f);
+    }
+
+    /* ==================== 对接 Carbon 后端 API 动作（按契约单标准定义） ==================== */
+    function updateSpeedLabel(val) {
+      const v = Number(val);
+      const tag = (v >= 1.12 && v <= 1.25) ? " (轻快推荐)" : (v > 1.25 ? " (紧凑高能)" : " (温和舒缓)");
+      document.getElementById("lbl-rate").textContent = v.toFixed(2) + "x" + tag;
+    }
+
+    function setSpeedPreset(val) {
+      const el = document.getElementById("cfg-voice-rate");
+      el.value = val;
+      updateSpeedLabel(val);
+    }
+
+    async function previewCurrentSpeed() {
+      const spd = Number(document.getElementById("cfg-voice-rate").value);
+      const sampleText = (scenes[0] && scenes[0].text) ? scenes[0].text : "推开小木门啦！听听现在这个讲解音速是不是更干脆利落呀！";
+      showToast(`🔊 正在按 ${spd.toFixed(2)}x 倍速合成试听语音...`);
+      const res = await callCarbonApi("/api/studio/voice_preview", "POST", {
+        voice_id: selectedVoiceId,
+        voice_speed: spd,
+        text: sampleText,
+      });
+      if (res.ok && res.audio_url) {
+        playAudioUrl(res.audio_url, `${spd.toFixed(2)}x 倍速讲解试听`);
+      }
+    }
+
+    async function savePeerLinks() {
+      const colab_hub_url = document.getElementById("peer-colab-url").value.trim();
+      const live_server_url = document.getElementById("peer-live-url").value.trim();
+      document.getElementById("nav-hub-link").href = colab_hub_url;
+      document.getElementById("nav-live-link").href = live_server_url + "/director";
+      const res = await callCarbonApi("/api/studio/links", "POST", { colab_hub_url, live_server_url });
+      if (res.ok) {
+        showToast("🔗 跨面板连接地址已保存生效！");
+        loadBootstrap();
+      }
+    }
+
+    function collectVideoPayload() {
+      return {
+        title: document.getElementById("video-title").value.trim(),
+        resolution: document.getElementById("cfg-resolution").value,
+        fps: Number(document.getElementById("cfg-fps").value),
+        visual_mode: document.getElementById("cfg-visual-mode").value,
+        subtitle_style: document.getElementById("cfg-sub-style").value,
+        voice_rate: Number(document.getElementById("cfg-voice-rate").value),
+        fast_remix: document.getElementById("cfg-visual-mode").value === "live_stage_record",
+        outro_cta: document.getElementById("cfg-outro-cta").value === "true",
+        tts_engine: document.getElementById("cfg-tts-engine").value,
+        primary_voice_id: selectedVoiceId,
+        bgm_url: document.getElementById("cfg-bgm-select").value,
+        bgm_volume: Number(document.getElementById("cfg-bgm-vol").value) / 100.0,
+        bgm_ducking: document.getElementById("cfg-ducking").value === "true",
+        scenes: scenes,
+      };
+    }
+
+    function saveStudioDraft() {
+      try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({ video: collectVideoPayload(), biliTags }));
+        showToast("💾 视频脚本与参数草稿已保存到本机浏览器！");
+      } catch (_) {}
+    }
+
+    async function startVideoRender() {
+      saveStudioDraft();
+      const bar = document.getElementById("render-progress-bar");
+      const st = document.getElementById("render-status-text");
+      bar.style.width = "12%";
+      st.textContent = "正在提交渲染任务给后端...";
+      const res = await callCarbonApi("/api/studio/render/start", "POST", collectVideoPayload());
+      if (res.ok && res.task_id) {
+        st.textContent = `🚀 渲染任务 ${res.task_id} 已启动，正在实时跟踪进度...`;
+        pollRenderTask(res.task_id);
+      } else if (res.pending_carbon) {
+        bar.style.width = "0%";
+        st.textContent = "⏳ 渲染队列后端将由 Carbon 接入（当前上方播放器已可直接播放本机预先做好的 1080P 龙宝成片！）";
+      }
+    }
+
+    async function pollRenderTask(taskId) {
+      const res = await callCarbonApi(`/api/studio/render/status/${taskId}`, "GET");
+      if (!res.ok) return;
+      document.getElementById("render-progress-bar").style.width = `${res.progress || 0}%`;
+      document.getElementById("render-status-text").textContent = res.stage_text || `渲染中 ${res.progress || 0}%`;
+      if (res.status === "done") {
+        showToast("🎉 新推广成片渲染完成！");
+        await loadBootstrap();
+      } else if (res.status !== "failed") {
+        setTimeout(() => pollRenderTask(taskId), 1500);
+      }
+    }
+
+    async function aiGenerateScript() {
+      const res = await callCarbonApi("/api/studio/script/generate", "POST", {
+        topic: document.getElementById("video-title").value.trim(),
+        voice_id: selectedVoiceId,
+        scene_count: 6,
+      });
+      if (res.ok && Array.isArray(res.scenes)) {
+        scenes = res.scenes;
+        renderScenes();
+        showToast("✨ AI 已生成全新分镜脚本！");
+      }
+    }
+
+    async function importLocalVoiceRef() {
+      const name = document.getElementById("imp-voice-name").value.trim();
+      const file = document.getElementById("imp-voice-file").files?.[0];
+      if (!name || !file) return showToast("⚠️ 请填写声线名称并选择干声音频文件");
+      const fd = new FormData();
+      fd.append("name", name);
+      fd.append("ref_text", document.getElementById("imp-voice-reftext").value.trim());
+      fd.append("file", file);
+      const res = await callCarbonApi("/api/studio/voices/upload", "POST", fd, true);
+      if (res.ok) { showToast("✅ 新参考干声已导入！"); loadBootstrap(); }
+    }
+
+    async function syncProjectVoices() {
+      await loadBootstrap();
+      await callCarbonApi("/api/studio/voices/sync_project", "POST", {});
+      showToast("🔄 已同步全部 8 位角色声线！");
+    }
+
+    async function importRemoteTts() {
+      const url = document.getElementById("imp-remote-url").value.trim();
+      if (!url) return showToast("⚠️ 请填写云端 TTS 地址");
+      const res = await callCarbonApi("/api/studio/voices/import_remote", "POST", {
+        url, token: document.getElementById("imp-remote-key").value.trim(),
+      });
+      if (res.ok) { showToast("☁️ 已成功连接外部声线服务！"); loadBootstrap(); }
+    }
+
+    async function saveEdgePreset() {
+      const name = document.getElementById("imp-edge-name").value.trim();
+      if (!name) return showToast("⚠️ 请填写预设名称");
+      const payload = {
+        name,
+        edge_voice: document.getElementById("imp-edge-base").value,
+        pitch: document.getElementById("imp-edge-pitch").value.trim(),
+        rate: document.getElementById("imp-edge-rate").value.trim(),
+      };
+      const res = await callCarbonApi("/api/studio/voices/edge_preset", "POST", payload);
+      // 无论后端是否已接，都在当前前端立即添加为可用声线方便预览配置
+      const customId = "edge_" + Date.now();
+      voicesList.push({
+        id: customId, nickname: name, prop_emoji: "🎚️", color: "#4f46e5",
+        edge_voice: `${payload.edge_voice} (${payload.pitch})`, avatar_url: "/static/avatars_coop/gpt.png",
+        preview_url: "",
+      });
+      renderVoices();
+      renderScenes();
+      if (res.ok) showToast("✅ 自定义声线预设已保存到后端！");
+    }
+
+    async function uploadCustomBgm() {
+      const f = document.getElementById("bgm-upload-input").files?.[0];
+      if (!f) return showToast("⚠️ 请先选择 BGM 音频文件");
+      const fd = new FormData();
+      fd.append("file", f);
+      const res = await callCarbonApi("/api/studio/bgm/upload", "POST", fd, true);
+      if (res.ok) { showToast("🎵 自定义 BGM 上传成功！"); loadBootstrap(); }
+    }
+
+    /* ==================== B站登录授权与自动投稿 ==================== */
+    async function requestBiliQr() {
+      clearInterval(qrPollTimer);
+      document.getElementById("bili-qr-status").textContent = "正在请求 B站官方扫码二维码...";
+      const res = await callCarbonApi("/api/bili/auth/qrcode", "POST", {});
+      if (res.ok && res.qr_image_base64) {
+        document.getElementById("bili-qr-box").innerHTML = `<img src="${res.qr_image_base64}" alt="B站扫码" />`;
+        document.getElementById("bili-qr-status").textContent = "📱 请打开手机哔哩哔哩 APP 扫一扫确认登录...";
+        qrPollTimer = setInterval(async () => {
+          const p = await callCarbonApi(`/api/bili/auth/qrcode/poll?qrcode_key=${encodeURIComponent(res.qrcode_key)}`, "GET");
+          if (p.logged_in) {
+            clearInterval(qrPollTimer);
+            applyBiliUserState(p.user);
+            showToast("🎉 B 站扫码登录成功！");
+          } else if (p.status_text) {
+            document.getElementById("bili-qr-status").textContent = p.status_text;
+          }
+        }, 2000);
+      } else if (res.pending_carbon) {
+        document.getElementById("bili-qr-status").textContent = "⏳ 二维码签发接口 (/api/bili/auth/qrcode) 待 Carbon 后端接入。";
+      }
+    }
+
+    async function loginBiliPassword() {
+      const username = document.getElementById("bili-username").value.trim();
+      const password = document.getElementById("bili-password").value;
+      if (!username || !password) return showToast("⚠️ 请输入 B 站账号与密码");
+      const res = await callCarbonApi("/api/bili/auth/password", "POST", { username, password });
+      if (res.ok && res.user) {
+        applyBiliUserState(res.user);
+        showToast("🎉 B 站账号登录成功！");
+      } else if (res.need_manual_captcha && res.captcha_url) {
+        showToast("⚠️ 触发 B 站安全滑块校验，请在新打开页面手动完成验证");
+        window.open(res.captcha_url, "_blank");
+      }
+    }
+
+    async function importBiliCookie() {
+      const raw = document.getElementById("bili-cookie-raw").value.trim();
+      if (!raw) return showToast("⚠️ 请粘贴 Cookie 或 biliup cookies.json");
+      const res = await callCarbonApi("/api/bili/auth/cookie", "POST", { raw_cookie: raw });
+      if (res.ok && res.user) {
+        applyBiliUserState(res.user);
+        showToast("✅ B 站凭证导入并校验成功！");
+      }
+    }
+
+    async function checkBiliSession() {
+      const res = await callCarbonApi("/api/bili/auth/status", "GET");
+      if (res.ok && res.logged_in) applyBiliUserState(res.user);
+      else if (res.ok) applyBiliUserState(null);
+    }
+
+    async function logoutBili() {
+      await callCarbonApi("/api/bili/auth/logout", "POST", {});
+      applyBiliUserState(null);
+      showToast("已退出 B 站账号");
+    }
+
+    function applyBiliUserState(user) {
+      const badge = document.getElementById("bili-login-badge");
+      const pill = document.getElementById("pill-bili-auth");
+      const card = document.getElementById("bili-account-card");
+      if (user && user.uname) {
+        badge.className = "pill ok"; badge.textContent = `✅ ${user.uname}`;
+        pill.className = "pill ok"; pill.textContent = `📺 B站：${user.uname} (Lv.${user.level || '?'})`;
+        card.style.display = "block";
+        document.getElementById("bili-user-info").textContent = `✅ 已登录：${user.uname} (UID: ${user.mid || ''})`;
+      } else {
+        badge.className = "pill warn"; badge.textContent = "未登录";
+        pill.className = "pill warn"; pill.textContent = "📺 B站账号：未登录";
+        card.style.display = "none";
+      }
+    }
+
+    async function aiGenerateBiliMeta() {
+      const res = await callCarbonApi("/api/bili/meta/generate", "POST", {
+        video_filename: document.getElementById("bili-video-select").value,
+        script_summary: scenes.map(s => s.text).join(" "),
+      });
+      if (res.ok) {
+        if (res.title) { document.getElementById("bili-title").value = res.title; document.getElementById("title-len").textContent = res.title.length; }
+        if (res.desc) document.getElementById("bili-desc").value = res.desc;
+        if (Array.isArray(res.tags)) { biliTags = res.tags.slice(0, 10); renderBiliTags(); }
+        showToast("✨ 已自动填充 B 站爆款标题与标签！");
+      }
+    }
+
+    async function extractAutoCover() {
+      const res = await callCarbonApi("/api/studio/cover/extract", "POST", {
+        video_filename: document.getElementById("bili-video-select").value,
+      });
+      if (res.ok && res.cover_url) {
+        document.getElementById("bili-cover-preview").src = res.cover_url + "?t=" + Date.now();
+        showToast("🖼️ 已自动提取高清封面！");
+      }
+    }
+
+    async function submitBiliUpload() {
+      const payload = {
+        video_filename: document.getElementById("bili-video-select").value,
+        title: document.getElementById("bili-title").value.trim(),
+        tid: Number(document.getElementById("bili-tid").value),
+        copyright: Number(document.getElementById("bili-copyright").value),
+        tags: biliTags,
+        desc: document.getElementById("bili-desc").value.trim(),
+        dynamic: document.getElementById("bili-dynamic").value.trim(),
+        schedule_time: document.getElementById("bili-schedule-time").value || null,
+        upload_line: document.getElementById("bili-upload-line").value,
+      };
+      if (!payload.title) return showToast("⚠️ 请填写稿件标题");
+      document.getElementById("bili-upload-status").textContent = "🚀 正在向后端提交 B 站投稿任务...";
+      const res = await callCarbonApi("/api/bili/upload", "POST", payload);
+      if (res.ok) {
+        document.getElementById("bili-upload-bar").style.width = "100%";
+        document.getElementById("bili-upload-status").textContent = `🎉 投稿成功！BV号：${res.bvid || '审核中'}`;
+        showToast("🎉 B 站自动投稿成功！");
+      } else if (res.pending_carbon) {
+        document.getElementById("bili-upload-status").textContent = "⏳ B 站投稿执行接口 (/api/bili/upload) 待 Carbon 接入 biliup/stream_gears 后立即生效！";
+      }
+    }
+
+    /* ==================== B站 AI 托管巡航控制 ==================== */
+    function collectAgentConfig() {
+      return {
+        watch_enabled: document.getElementById("ag-watch-enable").checked,
+        auto_fav: document.getElementById("ag-auto-fav").checked,
+        watch_source: document.getElementById("ag-watch-source").value,
+        keywords: document.getElementById("ag-keywords").value.split(/[,，]/).map(s => s.trim()).filter(Boolean),
+        watch_min_sec: Number(document.getElementById("ag-watch-min").value),
+        watch_max_sec: Number(document.getElementById("ag-watch-max").value),
+        reply_own_comments: document.getElementById("ag-reply-own").checked,
+        comment_watched_videos: document.getElementById("ag-comment-watch").checked,
+        comment_mode: document.getElementById("ag-comment-mode").value,
+        persona: document.getElementById("ag-persona").value,
+        system_prompt: document.getElementById("ag-prompt").value.trim(),
+        max_watch_per_day: Number(document.getElementById("ag-max-watch").value),
+        max_comment_per_day: Number(document.getElementById("ag-max-comment").value),
+        cooldown_min_sec: Number(document.getElementById("ag-cd-min").value),
+        cooldown_max_sec: Number(document.getElementById("ag-cd-max").value),
+        active_start: document.getElementById("ag-hour-start").value.trim(),
+        active_end: document.getElementById("ag-hour-end").value.trim(),
+        circuit_break_on_risk: document.getElementById("ag-circuit-break").checked,
+        dedup_bvid: document.getElementById("ag-dedup-bv").checked,
+      };
+    }
+
+    async function saveBiliAgentConfig() {
+      const cfg = collectAgentConfig();
+      try { localStorage.setItem("sunny_bili_agent_cfg", JSON.stringify(cfg)); } catch (_) {}
+      const res = await callCarbonApi("/api/bili/agent/config", "POST", cfg);
+      if (res.ok) showToast("💾 B站 AI 托管策略已保存到后端！");
+    }
+
+    async function toggleBiliAgent(enable) {
+      await saveBiliAgentConfig();
+      const res = await callCarbonApi(enable ? "/api/bili/agent/start" : "/api/bili/agent/stop", "POST", {});
+      if (res.ok) {
+        const pill = document.getElementById("pill-agent-state");
+        pill.className = enable ? "pill ok" : "pill pink";
+        pill.textContent = enable ? "🤖 AI托管：巡航运行中" : "🤖 AI托管：已停止";
+        showToast(enable ? "🚀 B站 AI 托管巡航已启动！" : "🛑 已急停 B站 AI 托管！");
+      }
+    }
+
+    async function refreshBiliAgentFeed() {
+      const res = await callCarbonApi("/api/bili/agent/status", "GET");
+      if (!res.ok) return;
+      document.getElementById("agent-stats-pill").textContent = `今日观看 ${res.today_watched || 0} · 回复 ${res.today_commented || 0}`;
+      if (Array.isArray(res.drafts)) {
+        document.getElementById("agent-draft-list").innerHTML = res.drafts.length
+          ? res.drafts.map(d => `
+            <div class="draft-item">
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                <b>🎬 [${escapeHtml(d.bvid)}] ${escapeHtml(d.video_title)}</b>
+                <span class="pill warn">待审批</span>
+              </div>
+              <textarea id="draft-txt-${d.id}" rows="2" style="margin-bottom:6px;">${escapeHtml(d.content)}</textarea>
+              <div class="row">
+                <button class="green sm" onclick="approveDraft('${d.id}')">✅ 批准发送</button>
+                <button class="red sm" onclick="rejectDraft('${d.id}')">🗑️ 驳回</button>
+              </div>
+            </div>
+          `).join("")
+          : `<div class="sub-tip">当前没有待审批的评论草稿。</div>`;
+      }
+      if (Array.isArray(res.logs) && res.logs.length) {
+        document.getElementById("agent-log-list").innerHTML = res.logs.map(l =>
+          `<div class="log-item"><b>[${escapeHtml(l.ts)}]</b> ${escapeHtml(l.msg)}</div>`
+        ).join("");
+      }
+    }
+
+    async function approveDraft(id) {
+      const txtEl = document.getElementById("draft-txt-" + id);
+      const res = await callCarbonApi(`/api/bili/agent/drafts/${id}/approve`, "POST", {
+        content: txtEl ? txtEl.value.trim() : "",
+      });
+      if (res.ok) { showToast("✅ 评论已发送！"); refreshBiliAgentFeed(); }
+    }
+
+    async function rejectDraft(id) {
+      const res = await callCarbonApi(`/api/bili/agent/drafts/${id}/reject`, "POST", {});
+      if (res.ok) { showToast("🗑️ 已忽略该草稿"); refreshBiliAgentFeed(); }
+    }
+
+    /* ==================== 初始化引导加载 ==================== */
+    async function loadBootstrap() {
+      try {
+        const r = await fetch("/api/studio/bootstrap");
+        const data = await r.json();
+        if (data.ok) {
+          voicesList = data.voices || [];
+          videosList = data.videos || [];
+          bgmList = data.bgm_list || [];
+          renderVoices();
+          renderScenes();
+          renderVideoAndBgmSelectors();
+          if (data.colab_hub_url) {
+            document.getElementById("peer-colab-url").value = data.colab_hub_url;
+            document.getElementById("nav-hub-link").href = data.colab_hub_url;
+          }
+          if (data.live_server_url) {
+            document.getElementById("peer-live-url").value = data.live_server_url;
+            document.getElementById("nav-live-link").href = data.live_server_url + "/director";
+          }
+          if (data.backend_ready) {
+            document.getElementById("backend-status-pill").className = "pill ok";
+            const hubState = data.colab_connected ? "Colab中枢已连通" : "Colab中枢待连";
+            document.getElementById("backend-status-pill").textContent = `✅ 独立服务在线 · ${hubState}`;
+            checkBiliSession();
+            refreshBiliAgentFeed();
+          }
+        }
+      } catch (err) {
+        showToast("⚠️ 无法连接 8765 服务：" + err.message);
+      }
+    }
+
+    // 恢复本地草稿
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if (saved?.video?.scenes?.length) scenes = saved.video.scenes;
+        if (Array.isArray(saved?.biliTags) && saved.biliTags.length) biliTags = saved.biliTags;
+      }
+    } catch (_) {}
+
+    document.getElementById("title-len").textContent = document.getElementById("bili-title").value.length;
+    renderBiliTags();
+    loadBootstrap();
+  </script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+# Python & Virtual Env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.log
+
+# Secrets, Credentials & Local Runtime Configs (NEVER COMMIT!)
+.env
+.env.*
+!.env.example
+colab_account.json
+colab_account.json.tmp
+cloud_client.json
+bili_cookies.json
+bili_cookies.json.tmp
+colab_hub_apps.json
+colab_hub_apps.json.tmp
+bili_studio_links.json
+desktop_hub.json
+*client_secret*.json
+
+# Local Databases
+*.db
+*.db-journal
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# User-Generated Voice Clones & Baked Voice Bank (NEVER UPLOAD! Users generate their own in :8768)
+static/voice_refs/*.wav
+static/voice_refs/*.mp3
+static/voice_refs/*.ogg
+static/voice_refs/*.json
+!static/voice_refs/.gitkeep
+static/voice_bank/*
+!static/voice_bank/.gitkeep
+
+# Runtime Temporary Media, Promo Outputs & Build Caches
+static/audio/*
+!static/audio/.gitkeep
+static/promo/_build_cache/
+static/promo/*.mp4
+static/promo/*.wav
+static/promo/custom_voices.json
+static/hub_outputs/
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>阳光小院 AI 娘活体骨骼互动直播间 v14</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: #121712;
+      font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+      user-select: none;
+    }
+
+    #stage-frame {
+      position: fixed;
+      top: 50%; left: 50%;
+      width: 1080px; height: 1920px;
+      transform-origin: center center;
+      overflow: hidden;
+      background: #c8e9ff;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.52);
+    }
+    #stage-frame.landscape { width: 1920px; height: 1080px; }
+
+    /* 1. 治愈田园近景背景 */
+    .bg-layer {
+      position: absolute; inset: 0;
+      background-size: cover; background-position: center 42%;
+      transition: opacity 0.8s ease;
+      transform: scale(1.12);
+    }
+    #bg-a { z-index: 1; opacity: 1; }
+    #atmo-overlay {
+      position: absolute; inset: 0; z-index: 4; pointer-events: none;
+      background:
+        radial-gradient(ellipse at 50% 24%, rgba(255, 248, 224, 0.24) 0%, rgba(255,255,255,0) 58%),
+        linear-gradient(180deg, rgba(25, 20, 12, 0.14) 0%, rgba(0,0,0,0) 14%, rgba(0,0,0,0) 70%, rgba(28, 19, 12, 0.28) 100%);
+    }
+
+    /* 2. 近景暖木露台层 */
+    #floor-canvas { position: absolute; inset: 0; z-index: 6; width: 100%; height: 100%; display: block; pointer-events: none; }
+
+    /* 3. 原版 Coopanion 58部件真骨骼活体角色层 */
+    #pet-layer { position: absolute; inset: 0; z-index: 12; pointer-events: none; }
+    .pet-host { position: absolute; inset: 0; transition: opacity 0.28s ease, filter 0.25s ease; pointer-events: none; }
+    .pet-host.speaking { filter: drop-shadow(0 0 22px rgba(255, 244, 196, 0.72)); }
+
+    /* 4. 精力条（含PK冻结态）+ 可选前景道具 + 樱花粒子 */
+    #props-canvas { position: absolute; inset: 0; z-index: 16; width: 100%; height: 100%; display: block; pointer-events: none; }
+
+    /* 5. 全面屏手机 (19.5:9 / 20:9) 100% 零裁切高清晰大字顶部布局：左右各内缩 118px，绝不被手机自动裁边，且彻底避开「主播头像」「人气榜」「进阶展馆」！ */
+    .top-hud {
+      position: absolute; top: 0; left: 0; right: 0; height: 420px;
+      z-index: 22; pointer-events: none;
+    }
+    #stage-frame.landscape .top-hud {
+      top: 24px; left: 28px; right: 28px; height: auto;
+      display: flex; justify-content: space-between; align-items: flex-start; gap: 14px;
+    }
+    .ai-badge {
+      position: absolute; top: 278px; left: 118px;
+      background: rgba(255, 255, 255, 0.97);
+      border: 2.5px solid #e2c799;
+      border-radius: 999px;
+      padding: 9px 20px;
+      color: #2c1808;
+      font-size: 24px; font-weight: 900; letter-spacing: 0.3px;
+      box-shadow: 0 8px 22px rgba(40, 24, 10, 0.22);
+      display: flex; align-items: center; gap: 10px;
+      white-space: nowrap;
+    }
+    #stage-frame.landscape .ai-badge { position: static; font-size: 21px; }
+    .ai-dot { width: 14px; height: 14px; border-radius: 50%; background: #16a34a; box-shadow: 0 0 8px #22c55e; }
+    .ai-dot.idle { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+
+    /* 6. 小屋休息中轮换队列面板（精准嵌于右上关闭键下方、进阶展馆上方，右缩 118px 零裁切，大字高对比！） */
+    #rest-panel {
+      position: absolute; top: 202px; right: 118px;
+      background: rgba(255, 255, 255, 0.96);
+      border: 2.5px solid #f59e0b;
+      border-radius: 20px;
+      padding: 7px 14px 9px;
+      box-shadow: 0 10px 24px rgba(40, 24, 10, 0.22);
+      max-width: 505px;
+    }
+    #stage-frame.landscape #rest-panel { position: static; max-width: 632px; }
+    .rest-head {
+      font-size: 18px; font-weight: 900; color: #7c2d12;
+      margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    }
+    .rest-list { display: flex; gap: 7px; flex-wrap: nowrap; align-items: center; }
+    .rest-chip {
+      position: relative;
+      display: flex; align-items: center; gap: 5px;
+      background: #fffbeb;
+      border: 2px solid #d6b98c;
+      border-radius: 999px;
+      padding: 3px 10px 3px 4px;
+      font-size: 18.5px; font-weight: 900; color: #1f140c;
+      white-space: nowrap;
+    }
+    .rest-chip.next-up {
+      border-color: #16a34a;
+      background: #dcfce7;
+      color: #14532d;
+      box-shadow: 0 0 10px rgba(22, 163, 74, 0.28);
+    }
+    .rest-chip img {
+      width: 32px; height: 32px; border-radius: 50%; object-fit: cover; object-position: top;
+      background: #fff; border: 2px solid #c9a87a;
+    }
+    .next-tag {
+      font-size: 13.5px; font-weight: 900; background: #15803d; color: #fff;
+      padding: 1.5px 7px; border-radius: 999px; margin-left: 2px;
+    }
+
+    /* 7. 高清晰大字互动指南卡片（左缩 118px 防裁切，宽 520px 远离右侧进阶展馆，字体放大至 21px 清晰锐利！） */
+    #guide-card {
+      position: absolute; top: 348px; left: 118px; width: 528px;
+      background: rgba(255, 255, 255, 0.95);
+      border: 2.5px solid #f59e0b;
+      border-radius: 22px;
+      padding: 12px 16px;
+      box-shadow: 0 12px 28px rgba(40, 24, 10, 0.20);
+      z-index: 21; pointer-events: none;
+      transition: opacity 0.24s ease, transform 0.24s ease;
+    }
+    #stage-frame.landscape #guide-card { top: 96px; left: 28px; width: 460px; }
+    #guide-card.hidden, #guide-card.yield-hidden { opacity: 0; transform: translateY(-10px); }
+    #guide-card .g-title { font-size: 23px; font-weight: 900; color: #7c2d12; margin-bottom: 7px; }
+    #guide-card .g-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+    #guide-card .g-list li {
+      font-size: 20.5px; font-weight: 900; color: #1c140e; line-height: 1.32;
+      background: #fff7ed;
+      border-radius: 11px; padding: 5px 11px;
+      border: 1.5px solid rgba(245, 158, 11, 0.38);
+    }
+
+    /* 8. ⚔️ 红蓝 PK 辩论实时投票面板（宽度 844px 严格居中、top:404px 彻底躲开右上进阶展馆！） */
+    #pk-banner {
+      position: absolute; top: 404px; left: 50%; transform: translateX(-50%) translateY(-14px);
+      width: 844px;
+      background: rgba(255, 255, 255, 0.98);
+      border: 4px solid #f59e0b;
+      border-radius: 26px;
+      padding: 14px 20px 13px;
+      box-shadow: 0 18px 44px rgba(30, 20, 10, 0.28);
+      z-index: 25; pointer-events: none;
+      opacity: 0; transition: all 0.3s cubic-bezier(.22,1,.36,1);
+    }
+    #pk-banner.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #stage-frame.landscape #pk-banner { top: 112px; width: 880px; }
+    .pk-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 12px; }
+    .pk-title { font-size: 26px; font-weight: 900; color: #7c2d12; }
+    .pk-timer {
+      background: #fee2e2; color: #b91c1c; border: 2px solid #fca5a5;
+      border-radius: 999px; padding: 4px 14px; font-size: 21px; font-weight: 900; white-space: nowrap;
+    }
+    .pk-sides { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 16px; }
+    .pk-side { font-size: 22px; font-weight: 900; }
+    .pk-side.red { color: #e11d48; }
+    .pk-side.blue { color: #2563eb; text-align: right; }
+    .pk-bar-track {
+      width: 100%; height: 28px; border-radius: 999px; overflow: hidden;
+      background: #e2e8f0; display: flex; border: 2px solid #fff;
+      box-shadow: inset 0 2px 6px rgba(0,0,0,0.12);
+    }
+    .pk-bar-red {
+      background: linear-gradient(90deg, #fb7185, #e11d48);
+      height: 100%; width: 50%; transition: width 0.35s cubic-bezier(.22,1,.36,1);
+      display: flex; align-items: center; padding-left: 12px; color: #fff; font-size: 16px; font-weight: 900;
+    }
+    .pk-bar-blue {
+      background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+      height: 100%; flex: 1;
+      display: flex; align-items: center; justify-content: flex-end; padding-right: 12px; color: #fff; font-size: 16px; font-weight: 900;
+    }
+    .pk-hint { text-align: center; margin-top: 7px; font-size: 18px; font-weight: 800; color: #64748b; }
+
+    /* 9. 🎬 观众出题 3 人吐槽横幅（宽度 844px、top:404px 彻底躲开进阶展馆！） */
+    #aud-topic-banner {
+      position: absolute; top: 404px; left: 50%; transform: translateX(-50%) translateY(-14px);
+      width: 844px;
+      background: linear-gradient(135deg, rgba(255, 241, 242, 0.98), rgba(254, 249, 195, 0.98));
+      border: 4px solid #ec4899;
+      border-radius: 26px;
+      padding: 15px 22px;
+      box-shadow: 0 16px 40px rgba(157, 23, 77, 0.25);
+      z-index: 25; pointer-events: none;
+      opacity: 0; transition: all 0.3s cubic-bezier(.22,1,.36,1);
+      text-align: center;
+    }
+    #aud-topic-banner.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #stage-frame.landscape #aud-topic-banner { top: 112px; width: 840px; }
+    .aud-sub { font-size: 22px; font-weight: 900; color: #be185d; margin-bottom: 6px; }
+    .aud-main { font-size: 31px; font-weight: 900; color: #2b101c; line-height: 1.3; }
+
+    /* 10. 🎙️ 真人开麦接管提示微标（top:404px 安全区！） */
+    #human-mic-banner {
+      position: absolute; top: 404px; left: 50%; transform: translateX(-50%);
+      background: rgba(220, 38, 38, 0.96); color: #fff;
+      border: 3px solid #fecaca; border-radius: 999px;
+      padding: 10px 26px; font-size: 24px; font-weight: 900;
+      box-shadow: 0 10px 28px rgba(220, 38, 38, 0.38);
+      z-index: 28; opacity: 0; transition: opacity 0.22s ease; pointer-events: none; white-space: nowrap;
+    }
+    #stage-frame.landscape #human-mic-banner { top: 105px; }
+    #human-mic-banner.show { opacity: 1; }
+
+    /* 11. 唯一单人超清晰大字流式气泡（字号升级至 35px 高对比深黑字，手机端极清锐利！） */
+    #overlay-layer { position: absolute; inset: 0; z-index: 26; pointer-events: none; overflow: hidden; }
+    #main-speech-bubble {
+      position: absolute; z-index: 32;
+      transform: translate(-50%, -100%);
+      max-width: 580px; min-width: 200px;
+      padding: 18px 25px 16px;
+      border-radius: 30px;
+      border: 4.5px solid #60a5fa;
+      background: rgba(255, 255, 255, 0.98);
+      color: #18100a;
+      font-size: 35px; font-weight: 900; line-height: 1.40;
+      box-shadow: 0 18px 42px rgba(36, 24, 12, 0.28);
+      opacity: 0;
+      transition: opacity 0.14s ease, left 0.16s cubic-bezier(.22,1,.36,1), top 0.16s cubic-bezier(.22,1,.36,1);
+      word-break: break-word;
+    }
+    #main-speech-bubble.show { opacity: 1; animation: bubblePop 0.22s cubic-bezier(.22,1.28,.36,1); }
+    #main-speech-bubble .familiar-tag {
+      display: none;
+      font-size: 17px; font-weight: 900; color: #be185d;
+      background: #fce7f3; border: 1.5px solid #f9a8d4;
+      border-radius: 999px; padding: 2px 11px; margin-bottom: 6px; width: fit-content;
+    }
+    #main-speech-bubble .familiar-tag.show { display: block; }
+    #main-speech-bubble .bubble-tail {
+      position: absolute; bottom: -19px; left: 50%; transform: translateX(-50%);
+      width: 0; height: 0;
+      border-left: 14px solid transparent; border-right: 14px solid transparent;
+      border-top: 19px solid #60a5fa;
+    }
+    #main-speech-bubble .bubble-tail-inner {
+      position: absolute; bottom: -13px; left: 50%; transform: translateX(-50%);
+      width: 0; height: 0;
+      border-left: 10px solid transparent; border-right: 10px solid transparent;
+      border-top: 14px solid rgba(255, 255, 255, 0.97);
+    }
+    .stream-char { display: inline; }
+    .stream-char.active { color: var(--spk-accent, #ea580c); text-shadow: 0 0 10px rgba(251, 146, 60, 0.35); }
+    .stream-cursor {
+      display: inline-block; width: 4px; height: 29px; margin-left: 3px; vertical-align: -4px;
+      border-radius: 4px; background: var(--spk-accent, #60a5fa);
+      animation: cursorBlink 0.55s steps(2) infinite;
+    }
+    .rx-badge {
+      position: absolute; z-index: 18;
+      transform: translate(-50%, -100%);
+      width: 64px; height: 64px; border-radius: 50%;
+      background: rgba(255, 255, 255, 0.95);
+      border: 3px solid #f59e0b;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 34px;
+      box-shadow: 0 10px 24px rgba(45, 32, 18, 0.22);
+      opacity: 0; transition: opacity 0.2s ease;
+    }
+    .rx-badge.show { opacity: 1; animation: floatPop 1.5s ease-in-out infinite; }
+    @keyframes cursorBlink { 0% { opacity: 1; } 100% { opacity: 0.15; } }
+    @keyframes bubblePop { 0% { transform: translate(-50%, -92%) scale(0.86); } 100% { transform: translate(-50%, -100%) scale(1); } }
+    @keyframes floatPop { 0%, 100% { transform: translate(-50%, -100%) translateY(0); } 50% { transform: translate(-50%, -100%) translateY(-8px); } }
+
+    #barrage-pill {
+      position: absolute; left: 118px; bottom: 635px; max-width: 720px;
+      background: rgba(255, 253, 247, 0.95); backdrop-filter: blur(8px);
+      border: 2.5px solid rgba(255, 255, 255, 0.96); border-radius: 999px;
+      padding: 10px 22px; font-size: 24px; font-weight: 900; color: #362214;
+      box-shadow: 0 8px 20px rgba(60, 42, 20, 0.18);
+      opacity: 0; transition: opacity 0.26s ease; z-index: 24; pointer-events: none;
+    }
+    #barrage-pill.show { opacity: 1; }
+    #stage-frame.landscape #barrage-pill { left: 26px; bottom: 38px; }
+
+    #toast-banner {
+      position: absolute; top: 585px; left: 50%; transform: translateX(-50%);
+      background: linear-gradient(135deg, rgba(255, 247, 237, 0.98), rgba(254, 243, 199, 0.98));
+      border: 3px solid #fb923c; border-radius: 999px;
+      padding: 11px 28px; font-size: 26px; font-weight: 900; color: #9a3412;
+      box-shadow: 0 12px 28px rgba(194, 65, 12, 0.24);
+      opacity: 0; transition: all 0.24s ease; z-index: 35; pointer-events: none; white-space: nowrap;
+    }
+    #stage-frame.landscape #toast-banner { top: 220px; }
+    #toast-banner.show { opacity: 1; transform: translateX(-50%) translateY(4px); }
+
+    /* 抖音手机端 1080x1920 全面屏(20:9)裁切与遮挡参考线（仅 ?safe_guide=1 显示，OBS 推流自动隐藏！） */
+    #dy-safe-guide {
+      position: absolute; inset: 0; z-index: 45; pointer-events: none; display: none;
+    }
+    #dy-safe-guide.show { display: block; }
+    #stage-frame.landscape #dy-safe-guide { display: none !important; }
+    .safe-mask-top {
+      position: absolute; top: 0; left: 0; right: 0; height: 270px;
+      background: rgba(239, 68, 68, 0.16); border-bottom: 3px dashed #ef4444;
+      display: flex; align-items: flex-end; justify-content: center; padding-bottom: 8px;
+      color: #fee2e2; font-size: 20px; font-weight: 900; text-shadow: 0 2px 6px rgba(0,0,0,0.85);
+    }
+    .safe-mask-bottom {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 615px;
+      background: rgba(239, 68, 68, 0.16); border-top: 3px dashed #ef4444;
+      display: flex; align-items: flex-start; justify-content: center; padding-top: 12px;
+      color: #fee2e2; font-size: 20px; font-weight: 900; text-shadow: 0 2px 6px rgba(0,0,0,0.85);
+    }
+    .safe-mask-left-crop {
+      position: absolute; top: 0; left: 0; bottom: 0; width: 110px;
+      background: rgba(245, 158, 11, 0.22); border-right: 3px dashed #f59e0b;
+    }
+    .safe-mask-right {
+      position: absolute; top: 0; right: 0; bottom: 0; width: 110px;
+      background: rgba(245, 158, 11, 0.22); border-left: 3px dashed #f59e0b;
+      display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl;
+      color: #fef3c7; font-size: 18px; font-weight: 900; text-shadow: 0 2px 6px rgba(0,0,0,0.85);
+    }
+
+    .stage-dock {
+      position: absolute; right: 24px; bottom: 24px;
+      display: flex; gap: 10px; z-index: 40; opacity: 0.88; transition: opacity 0.2s;
+    }
+    .stage-dock:hover { opacity: 1; }
+    .dock-btn {
+      border: 2px solid rgba(255, 255, 255, 0.48); border-radius: 999px;
+      padding: 10px 18px; font-size: 18px; font-weight: 900;
+      background: rgba(20, 26, 22, 0.82); color: #fff; cursor: pointer; backdrop-filter: blur(8px);
+    }
+    .dock-btn.active { background: #16a34a; border-color: #bbf7d0; }
+  </style>
+</head>
+<body>
+  <div id="stage-frame">
+    <div id="bg-a" class="bg-layer"></div>
+    <div id="atmo-overlay"></div>
+
+    <canvas id="floor-canvas"></canvas>
+    <div id="pet-layer"></div>
+    <canvas id="props-canvas"></canvas>
+
+    <!-- 顶部栏（抖音竖屏 0 遮挡安全区）：左上「AI生成互动 · 真人直播」，右上「小屋休息中」队列 -->
+    <div class="top-hud">
+      <div class="ai-badge">
+        <span class="ai-dot idle" id="live-dot"></span>
+        <span>AI生成互动 · 真人直播</span>
+      </div>
+
+      <div id="rest-panel">
+        <div class="rest-head">
+          <span>🛋️ 小屋休息中（轮流出场）</span>
+          <span id="rest-count" style="font-size:14.5px;color:#78716c;">5位休息</span>
+        </div>
+        <div class="rest-list" id="rest-list"></div>
+      </div>
+    </div>
+
+    <!-- 合规去诱导版互动指南卡片（PK/出题时自动让位，小心心彩蛋机制完整保留） -->
+    <div id="guide-card">
+      <div class="g-title" id="guide-title">✨ 小院互动指南</div>
+      <ul class="g-list" id="guide-list">
+        <li>💬 弹幕点名：喊外号即可随机翻牌聊</li>
+        <li>⚔️ 辩论 PK：公屏发 1 / 2 实时投票</li>
+        <li>🎬 观众出题：发「出题：xxx」3人接力吐槽</li>
+        <li>✨ 轮换彩蛋：小心心可请休息伙伴上台并记住你</li>
+      </ul>
+    </div>
+
+    <!-- ⚔️ 红蓝 PK 辩论实时投票面板 -->
+    <div id="pk-banner">
+      <div class="pk-top">
+        <div class="pk-title" id="pk-title">⚔️ 辩论 PK：甜粽子 vs 咸粽子</div>
+        <div class="pk-timer" id="pk-timer">⏱️ 60s</div>
+      </div>
+      <div class="pk-sides">
+        <div class="pk-side red" id="pk-red-label">🔴 龙宝 · 红方观点</div>
+        <div class="pk-side blue" id="pk-blue-label">蓝方观点 · 鲸宝 🔵</div>
+      </div>
+      <div class="pk-bar-track">
+        <div class="pk-bar-red" id="pk-bar-red">50% (0票)</div>
+        <div class="pk-bar-blue" id="pk-bar-blue">(0票) 50%</div>
+      </div>
+      <div class="pk-hint">💬 弹幕发送 <b>1</b> 支持红方 · 发送 <b>2</b> 支持蓝方（PK 期间精力冻结）</div>
+    </div>
+
+    <!-- 🎬 观众出题 3 人吐槽横幅 -->
+    <div id="aud-topic-banner">
+      <div class="aud-sub" id="aud-topic-sub">🎬 观众【热心网友】出题 · 3人从左到右依次吐槽</div>
+      <div class="aud-main" id="aud-topic-main">如果明天不用上班大家最想做什么？</div>
+    </div>
+
+    <!-- 🎙️ 真人开麦接管提示 -->
+    <div id="human-mic-banner">🎙️ 主播真人连麦对话中 · 宝宝认真倾听</div>
+
+    <!-- 唯一单人字音同步流式气泡 -->
+    <div id="overlay-layer">
+      <div id="main-speech-bubble">
+        <div class="familiar-tag" id="bubble-familiar">💖 记得你的小心心哦</div>
+        <span id="bubble-text"></span>
+        <div class="bubble-tail" id="bubble-tail"></div>
+        <div class="bubble-tail-inner" id="bubble-tail-inner"></div>
+      </div>
+    </div>
+
+    <div id="barrage-pill"></div>
+    <div id="toast-banner"></div>
+
+    <!-- 抖音 1080×1920 全面屏(20:9)裁切与遮挡区辅助线（仅预览核查开启，OBS 采集自动隐藏） -->
+    <div id="dy-safe-guide">
+      <div class="safe-mask-left-crop"></div>
+      <div class="safe-mask-right">全面屏右侧裁切区 (110px)</div>
+      <div class="safe-mask-top">⚠️ 抖音顶栏 / 人气榜区 (0~270px) · 已完全留空</div>
+      <div class="safe-mask-bottom">⚠️ 抖音系统长公告 & 弹幕发言区 (底部 615px) · 角色与精力条已全部上移避让</div>
+    </div>
+
+    <div class="stage-dock" id="stage-dock">
+      <button class="dock-btn" id="btn-unlock-audio">🔊 开启声音</button>
+      <button class="dock-btn active" id="btn-guide-card">📋 互动牌：开</button>
+      <button class="dock-btn" id="btn-safe-guide">📐 抖音安全线</button>
+      <button class="dock-btn" id="btn-desk-prop">🍰 道具：无</button>
+      <button class="dock-btn active" id="btn-posture">✨ 姿势：个性活体</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createBody } from '/static/coopanion/web/kit/body.js?v=14';
+    import { createWhaleFigure } from '/static/coopanion/web/whale/figure.js?v=14';
+
+    const params = new URLSearchParams(location.search);
+    const isLandscape = params.get('layout') === 'landscape';
+    const muteAudio = params.get('mute_audio') === '1';
+    const hideDock = params.get('obs') === '1' || muteAudio;
+    const hideBarragePill = params.get('hide_barrage') === '1';
+    let showSafeGuide = params.get('safe_guide') === '1';
+    const useRaster = params.get('raster') === '1';
+
+    const frameEl = document.getElementById('stage-frame');
+    if (isLandscape) frameEl.classList.add('landscape');
+    const W = isLandscape ? 1920 : 1080;
+    const H = isLandscape ? 1080 : 1920;
+
+    const floorCanvas = document.getElementById('floor-canvas');
+    floorCanvas.width = W; floorCanvas.height = H;
+    const fCtx = floorCanvas.getContext('2d');
+
+    const propsCanvas = document.getElementById('props-canvas');
+    propsCanvas.width = W; propsCanvas.height = H;
+    const pCtx = propsCanvas.getContext('2d');
+
+    const petLayer = document.getElementById('pet-layer');
+    const overlayLayer = document.getElementById('overlay-layer');
+    const bubbleEl = document.getElementById('main-speech-bubble');
+    const bubbleFamiliarEl = document.getElementById('bubble-familiar');
+    const bubbleTextEl = document.getElementById('bubble-text');
+    const bubbleTailEl = document.getElementById('bubble-tail');
+    const bubbleTailInnerEl = document.getElementById('bubble-tail-inner');
+
+    function fitStage() {
+      const sc = Math.min(window.innerWidth / W, window.innerHeight / H);
+      frameEl.style.transform = `translate(-50%, -50%) scale(${sc})`;
+    }
+    fitStage();
+    window.addEventListener('resize', fitStage);
+
+    document.getElementById('bg-a').style.backgroundImage = `url('/static/scenes/scene_life.jpg?v=14')`;
+
+    const SCHEME_MAP = {
+      deepseek: 'deepseek', gpt: 'chatgpt', claude: 'claude', gemini: 'gemini',
+      kimi: 'kimi', qwen: 'qwen', grok: 'grok', zhipu: 'zhipu',
+    };
+    const WHALE_BASE = new URL('/static/coopanion/web/whale/', location.origin);
+    const ASSET_VER = '?v=14';
+
+    // 8 位专属性格外号（休息区、PK 栏与进出场提示统一使用外号，不展示真名！）
+    const NICKNAMES = {
+      gpt: '龙宝', deepseek: '鲸宝', claude: '葵葵', gemini: '星喵',
+      grok: '瓜瓜', kimi: '月月', qwen: '小桂花', zhipu: '班长',
+    };
+
+    // 个性神态与动作档案（1人独播时优先使用直视观众的高表现力表情，防止眼神飘向侧墙！）
+    const PERSONALITY_BEHAVIORS = {
+      deepseek: { soloExprs: ['happy', 'excited', 'wink', 'love', 'neutral'], exprs: ['happy', 'excited', 'smug', 'pout', 'wink'], motions: ['hop', 'wave', 'dance', 'nod'], sitChance: 0.24, interval: [3.2, 5.0] },
+      gpt:      { soloExprs: ['happy', 'wink', 'excited', 'neutral'], exprs: ['smug', 'happy', 'thinking', 'wink'], motions: ['nod', 'wave', 'bow'], sitChance: 0.22, interval: [3.6, 5.4] },
+      claude:   { soloExprs: ['happy', 'love', 'wink', 'neutral'], exprs: ['shy', 'happy', 'love', 'wink'], motions: ['bow', 'wave', 'nod'], sitChance: 0.34, interval: [3.5, 5.5] },
+      gemini:   { soloExprs: ['excited', 'happy', 'love', 'surprised', 'neutral'], exprs: ['excited', 'surprised', 'happy', 'love'], motions: ['hop', 'dance', 'wave', 'nod'], sitChance: 0.18, interval: [2.8, 4.4] },
+      grok:     { soloExprs: ['excited', 'wink', 'happy', 'pout', 'neutral'], exprs: ['smug', 'pout', 'angry', 'excited', 'wink'], motions: ['shake', 'hop', 'wave'], sitChance: 0.16, interval: [2.9, 4.6] },
+      kimi:     { soloExprs: ['wink', 'happy', 'love', 'neutral'], exprs: ['wink', 'thinking', 'happy', 'shy', 'love'], motions: ['wave', 'nod', 'bow'], sitChance: 0.30, interval: [3.6, 5.4] },
+      qwen:     { soloExprs: ['happy', 'wink', 'love', 'neutral'], exprs: ['happy', 'wink', 'smug', 'love'], motions: ['bow', 'wave', 'nod'], sitChance: 0.26, interval: [3.4, 5.2] },
+      zhipu:    { soloExprs: ['determined', 'happy', 'wink', 'neutral'], exprs: ['determined', 'thinking', 'happy', 'wink'], motions: ['nod', 'bow', 'wave'], sitChance: 0.28, interval: [3.8, 5.6] },
+    };
+
+    // ==================== 1. 严格单轨防串音音频管理器 ====================
+    const unlockBtn = document.getElementById('btn-unlock-audio');
+    const guideBtn = document.getElementById('btn-guide-card');
+    const guideCardEl = document.getElementById('guide-card');
+    const safeGuideBtn = document.getElementById('btn-safe-guide');
+    const safeGuideEl = document.getElementById('dy-safe-guide');
+    const deskPropBtn = document.getElementById('btn-desk-prop');
+    const postureBtn = document.getElementById('btn-posture');
+    if (hideDock) document.getElementById('stage-dock').style.display = 'none';
+    if (showSafeGuide && !isLandscape) {
+      safeGuideEl.classList.add('show');
+      safeGuideBtn.classList.add('active');
+    }
+    safeGuideBtn.addEventListener('click', () => {
+      showSafeGuide = !showSafeGuide;
+      safeGuideEl.classList.toggle('show', showSafeGuide && !isLandscape);
+      safeGuideBtn.classList.toggle('active', showSafeGuide);
+    });
+
+    let activeAudio = null;
+    let activeAudioSeq = 0;
+    let audioCtx = null;
+    let postureOverride = params.get('sit') === '1' ? 'sit' : 'auto';
+    let deskPropMode = 'none';
+    let showGuideCard = params.get('guide') !== '0';
+    let propTransition = 1.0;
+
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function syncGuideCardUI(title, items) {
+      guideCardEl.classList.toggle('hidden', !showGuideCard);
+      guideBtn.textContent = showGuideCard ? '📋 互动牌：开' : '📋 互动牌：关';
+      guideBtn.classList.toggle('active', showGuideCard);
+      if (title) document.getElementById('guide-title').textContent = title;
+      if (Array.isArray(items) && items.length) {
+        document.getElementById('guide-list').innerHTML = items.map(it => `<li>${escapeHtml(it)}</li>`).join('');
+      }
+    }
+    guideBtn.addEventListener('click', () => {
+      showGuideCard = !showGuideCard;
+      syncGuideCardUI();
+      fetch('/api/guide_card', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ show: showGuideCard }) }).catch(() => {});
+    });
+
+    function syncDeskPropLabel() {
+      const m = { none: '🍰 道具：无', tea: '🍰 道具：下午茶', mic: '🎙️ 道具：独播台' };
+      deskPropBtn.textContent = m[deskPropMode] || m.none;
+      deskPropBtn.classList.toggle('active', deskPropMode !== 'none');
+    }
+    deskPropBtn.addEventListener('click', () => {
+      const next = deskPropMode === 'none' ? 'tea' : (deskPropMode === 'tea' ? 'mic' : 'none');
+      deskPropMode = next; propTransition = 0.0; syncDeskPropLabel();
+      fetch('/api/desk_prop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: next }) }).catch(() => {});
+    });
+
+    function syncPostureBtn() {
+      const map = { auto: '✨ 姿势：个性活体', sit: '🪑 姿势：全员坐姿', stand: '🧍 姿势：全员站姿' };
+      postureBtn.textContent = map[postureOverride];
+      for (const actor of actors.values()) {
+        if (!actor.ready || !actor.body) continue;
+        if (postureOverride === 'sit') { actor.isSeated = true; actor.body.do('sit'); }
+        else if (postureOverride === 'stand') { actor.isSeated = false; actor.body.do('stand'); }
+      }
+    }
+    postureBtn.addEventListener('click', () => {
+      postureOverride = postureOverride === 'auto' ? 'sit' : (postureOverride === 'sit' ? 'stand' : 'auto');
+      syncPostureBtn();
+    });
+
+    unlockBtn.addEventListener('click', () => {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        audioCtx.resume();
+      } catch (_) {}
+      unlockBtn.textContent = '🔊 声音已开启';
+      unlockBtn.classList.add('active');
+      setTimeout(() => { unlockBtn.style.display = 'none'; }, 800);
+    });
+
+    function stopActiveAudio() {
+      activeAudioSeq++;
+      if (activeAudio) {
+        try { activeAudio.pause(); activeAudio.currentTime = 0; activeAudio.src = ''; } catch (_) {}
+        activeAudio = null;
+      }
+    }
+
+    function playSingleTrackAudio(url, rate, onStarted, onEnded) {
+      stopActiveAudio();
+      if (muteAudio || !url) return null;
+      const mySeq = activeAudioSeq;
+      const a = new Audio(url);
+      a.crossOrigin = 'anonymous';
+      a.preservesPitch = true;
+      a.mozPreservesPitch = true;
+      a.webkitPreservesPitch = true;
+      const finalRate = Math.max(0.70, Math.min(1.22, Number(rate || window.__currentVoiceRate || 0.88)));
+      a.playbackRate = finalRate;
+      activeAudio = a;
+      a.addEventListener('playing', () => {
+        if (mySeq !== activeAudioSeq) { try { a.pause(); } catch (_) {} return; }
+        try { a.playbackRate = finalRate; } catch (_) {}
+        onStarted?.(a);
+      }, { once: true });
+      a.addEventListener('ended', () => {
+        if (mySeq === activeAudioSeq) onEnded?.(a);
+      }, { once: true });
+      a.play().then(() => {
+        unlockBtn.style.display = 'none';
+      }).catch(() => {
+        if (!hideDock) {
+          unlockBtn.style.display = 'inline-block';
+          unlockBtn.textContent = '🔊 点此开启声音';
+        }
+      });
+      return a;
+    }
+
+    // ==================== 2. 超近景 1~3 人黄金无遮挡席位 ====================
+    function getFormationSlots(count) {
+      if (isLandscape) {
+        if (count === 1) return [{ x: 960, y: 945, S: 2.38, facing: 1 }];
+        if (count === 2) return [{ x: 615, y: 940, S: 2.16, facing: 1 }, { x: 1305, y: 940, S: 2.16, facing: -1 }];
+        return [
+          { x: 430, y: 945, S: 1.98, facing: 1 },
+          { x: 960, y: 920, S: 2.08, facing: 1 },
+          { x: 1490, y: 945, S: 1.98, facing: -1 },
+        ];
+      }
+      // 竖屏 1080x1920 全面屏手机 (20:9) 100% 零裁切 & 底部长公告 0 遮挡黄金站位（水平收进 x=248~832，脚底抬高至 y=1205~1215！）
+      if (count === 1) return [{ x: 540, y: 1212, S: 2.38, facing: 1 }];
+      if (count === 2) return [{ x: 305, y: 1205, S: 2.08, facing: 1 }, { x: 775, y: 1205, S: 2.08, facing: -1 }];
+      return [
+        { x: 248, y: 1214, S: 1.80, facing: 1 },
+        { x: 540, y: 1172, S: 1.90, facing: 1 },
+        { x: 832, y: 1214, S: 1.80, facing: -1 },
+      ];
+    }
+
+    // ==================== 3. 原版 Coopanion 58部件骨骼角色池（离场彻底销毁气泡与音频！） ====================
+    const actors = new Map();
+    let stageOrder = [];
+    let initialLoaded = false;
+    let lastSnap = null;
+    let fxBursts = [];
+    const pendingSpeakByPid = new Map();
+
+    function mapEmotionToCoopanion(emo) {
+      const m = {
+        happy: 'happy', talking: 'happy', smug: 'smug', angry: 'angry',
+        shocked: 'surprised', surprised: 'surprised', shy: 'shy', sad: 'sad',
+        thinking: 'thinking', dizzy: 'dizzy', sleep: 'sleep', love: 'love',
+        sleepy: 'sleepy', pout: 'pout', worried: 'worried', determined: 'determined',
+        excited: 'excited', confused: 'confused', listening: 'listening', wink: 'wink',
+        idle: 'neutral',
+      };
+      return m[emo] || 'neutral';
+    }
+
+    function spawnMagicBurst(x, y, color = '#fbbf24') {
+      const pieces = [];
+      for (let i = 0; i < 20; i++) {
+        const ang = (i / 20) * Math.PI * 2 + Math.random() * 0.3;
+        const spd = 90 + Math.random() * 190;
+        pieces.push({
+          x, y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd - 90,
+          r: 5 + Math.random() * 7,
+          color: ['#fef08a', '#fbcfe8', '#93c5fd', color, '#ffffff'][i % 5],
+        });
+      }
+      fxBursts.push({ t: 0, dur: 0.8, pieces });
+    }
+
+    function nextBehavDelay(pid) {
+      const prof = PERSONALITY_BEHAVIORS[pid] || PERSONALITY_BEHAVIORS.deepseek;
+      const [lo, hi] = prof.interval;
+      return lo + Math.random() * (hi - lo);
+    }
+
+    async function createCoopanionActor(pid, persona, slot, isNewEntry) {
+      const hostEl = document.createElement('div');
+      hostEl.className = 'pet-host';
+      hostEl.style.zIndex = String(Math.round(slot.y));
+      hostEl.style.opacity = '0';
+      petLayer.appendChild(hostEl);
+
+      const rxEl = document.createElement('div');
+      rxEl.className = 'rx-badge';
+      overlayLayer.appendChild(rxEl);
+
+      const actor = {
+        id: pid,
+        persona,
+        slot: { ...slot },
+        curX: isNewEntry ? (slot.x <= W * 0.5 ? Math.max(70, slot.x - 110) : Math.min(W - 70, slot.x + 110)) : slot.x,
+        curY: slot.y,
+        hostEl,
+        rxEl,
+        body: null,
+        figure: null,
+        ready: false,
+        exiting: false,
+        isSeated: false,
+        displayStamina: 100,
+        state: { stamina: 100, emotion: 'idle', pose: 'idle', reaction_emoji: '' },
+        nextBehavAt: performance.now() / 1000 + 2.0 + Math.random() * 2.0,
+        lastSpeakEmoHoldAt: 0,
+        enteredCueDone: !isNewEntry,
+      };
+      actors.set(pid, actor);
+
+      const scheme = SCHEME_MAP[pid] || 'deepseek';
+      try {
+        const figure = await createWhaleFigure(WHALE_BASE, {
+          scheme,
+          raster: useRaster,
+          asset: p => new URL(p + ASSET_VER, WHALE_BASE),
+        });
+        if (!actors.has(pid)) {
+          figure.dispose?.(); hostEl.remove(); rxEl.remove();
+          return actor;
+        }
+        const body = createBody(
+          {
+            root: hostEl,
+            bounds: () => ({ W, H, floorY: actor.slot.y, S: actor.slot.S }),
+            emit: () => {},
+            sound: () => {},
+            start: { x: actor.curX, y: actor.curY, facing: slot.facing || 1 },
+          },
+          { figure, roam: 'off', ground: 'free' }
+        );
+
+        actor.figure = figure;
+        actor.body = body;
+        actor.ready = true;
+
+        const initFacing = slot.facing || 1;
+        body.place(actor.curX, initFacing, actor.curY);
+        // 首帧立即灌入正对镜头坐标，避免刚加载完有一瞬间看向侧边
+        body.pointer('move', { x: actor.curX - 480 * initFacing, y: actor.curY - 150 * actor.slot.S });
+
+        if (isNewEntry) {
+          spawnMagicBurst(slot.x, slot.y - 190, persona.color || '#fbbf24');
+          body.cue('bounce');
+          body.do('wave');
+        } else {
+          if (postureOverride === 'sit') { body.do('sit'); actor.isSeated = true; }
+        }
+        for (let i = 0; i < 4; i++) body.step(1 / 60, true);
+
+        requestAnimationFrame(() => {
+          if (!actors.has(pid)) return;
+          hostEl.style.opacity = '1';
+          const queued = pendingSpeakByPid.get(pid);
+          if (queued) {
+            pendingSpeakByPid.delete(pid);
+            handleMessage(queued);
+          }
+        });
+      } catch (err) {
+        console.error('[Coopanion] 加载角色失败:', pid, err);
+      }
+      return actor;
+    }
+
+    function disposeActor(pid) {
+      // 【图1 核心 Bug 修复 1】：角色离场卸载瞬间，若气泡或音频仍归属该角色，立刻停音并彻底销毁对话框！
+      if (streamState && streamState.speaker === pid) {
+        stopActiveAudio();
+        clearSpeechDisplay();
+      }
+      pendingSpeakByPid.delete(pid);
+      const a = actors.get(pid);
+      if (!a) return;
+      actors.delete(pid);
+      try { a.body?.dispose?.(); } catch (_) {}
+      try { a.hostEl?.remove(); } catch (_) {}
+      try { a.rxEl?.remove(); } catch (_) {}
+    }
+
+    function syncActorSlot(actor, slot) {
+      const scaleChanged = Math.abs(actor.slot.S - slot.S) > 0.02 || Math.abs(actor.slot.y - slot.y) > 5;
+      actor.slot = { ...slot };
+      actor.hostEl.style.zIndex = String(Math.round(slot.y));
+      if (!actor.ready || !actor.body || actor.exiting) return;
+      if (scaleChanged) actor.body.resize();
+    }
+
+    function tickActorLivingPersonality(actor, t, isSpeaking) {
+      if (!actor.ready || !actor.body || actor.exiting) return;
+      if (isSpeaking) {
+        if (actor.isSeated && postureOverride !== 'sit') {
+          actor.isSeated = false;
+          actor.body.do('stand');
+        }
+        if (t - actor.lastSpeakEmoHoldAt > 2.3) {
+          actor.lastSpeakEmoHoldAt = t;
+          const emo = mapEmotionToCoopanion(streamState?.emotion || actor.state.emotion || 'happy');
+          if (emo !== 'neutral') actor.body.do(emo);
+        }
+        return;
+      }
+
+      if (t >= actor.nextBehavAt) {
+        const prof = PERSONALITY_BEHAVIORS[actor.id] || PERSONALITY_BEHAVIORS.deepseek;
+        actor.nextBehavAt = t + nextBehavDelay(actor.id);
+
+        if (postureOverride === 'auto') {
+          const effectiveSitChance = stageOrder.length === 1 ? prof.sitChance : prof.sitChance * 0.22;
+          const wantSit = Math.random() < effectiveSitChance;
+          if (wantSit !== actor.isSeated) {
+            actor.isSeated = wantSit;
+            actor.body.do(wantSit ? 'sit' : 'stand');
+          }
+        }
+        const pool = stageOrder.length === 1 ? (prof.soloExprs || prof.exprs) : prof.exprs;
+        const pickedExpr = pool[Math.floor(Math.random() * pool.length)];
+        if (pickedExpr !== 'neutral') actor.body.do(pickedExpr);
+
+        if (!actor.isSeated && Math.random() < 0.72) {
+          const pickedMotion = prof.motions[Math.floor(Math.random() * prof.motions.length)];
+          actor.body.do(pickedMotion);
+        }
+      }
+    }
+
+    // ==================== 4. 严格面向观众直视 + 1/2/3 人精准对视公式 ====================
+    function computeGazeAndFacing(actor, spkId, t) {
+      const n = stageOrder.length;
+      const idx = stageOrder.indexOf(actor.id);
+      const spkIdx = spkId ? stageOrder.indexOf(spkId) : -1;
+      const ax = actor.curX ?? actor.slot.x;
+      const ay = actor.curY ?? actor.slot.y;
+
+      const restFacing = (n >= 2 && idx === n - 1) ? -1 : 1;
+      // 强力正向回正注视点：拉满 look[0] ≈ -5.0 驱动双瞳居中 + Live2D 面部正向视差直视观众镜头！
+      const cameraPt = (f) => ({
+        x: ax - 480 * f + Math.sin(t * 0.8 + idx) * 12,
+        y: ay - 150 * actor.slot.S + Math.cos(t * 0.6 + idx) * 5,
+      });
+      const lookSidePt = (dir) => ({
+        x: ax + 540 * dir,
+        y: ay - 156 * actor.slot.S,
+      });
+
+      // 规则 1：1 个人时永远正对屏幕直视观众；无人说话时全员对称直视观众！
+      if (n <= 1 || spkIdx < 0) {
+        return { pt: cameraPt(restFacing), facing: restFacing };
+      }
+      // 规则 2：2 个人时，一人发言双方互相温柔对视！
+      if (n === 2) {
+        const dir = idx === 0 ? 1 : -1;
+        return { pt: lookSidePt(dir), facing: dir };
+      }
+      // 规则 3：3 个人时，有人发言则中间角色盯着发言者看，另一位盯着屏幕看！
+      if (n >= 3) {
+        const midIdx = 1;
+        if (idx === midIdx) {
+          if (spkIdx === 0) return { pt: lookSidePt(-1), facing: -1 };
+          if (spkIdx === 2) return { pt: lookSidePt(1), facing: 1 };
+          return { pt: cameraPt(1), facing: 1 };
+        }
+        if (actor.id === spkId) {
+          const dir = idx === 0 ? 1 : -1;
+          return { pt: lookSidePt(dir), facing: dir };
+        }
+        return { pt: cameraPt(restFacing), facing: restFacing };
+      }
+      return { pt: cameraPt(restFacing), facing: restFacing };
+    }
+
+    // ==================== 5. 彻底修复卡字/残留的单人流式气泡引擎 ====================
+    let activeSpeechId = 0;
+    let streamState = null;
+
+    function clearSpeechDisplay() {
+      streamState = null;
+      bubbleEl.classList.remove('show');
+      bubbleFamiliarEl.classList.remove('show');
+      bubbleTextEl.innerHTML = '';
+      for (const a of actors.values()) a.hostEl.classList.remove('speaking');
+    }
+
+    function renderStreamText(text, visibleCount, isDone) {
+      const shown = Math.max(1, Math.min(text.length, visibleCount));
+      const head = text.slice(0, Math.max(0, shown - 1));
+      const cur = text.slice(Math.max(0, shown - 1), shown);
+      bubbleTextEl.innerHTML =
+        `<span class="stream-char">${escapeHtml(head)}</span>` +
+        `<span class="stream-char ${isDone ? '' : 'active'}">${escapeHtml(cur)}</span>` +
+        (isDone ? '' : '<span class="stream-cursor"></span>');
+    }
+
+    function positionBubbleAboveSpeaker(actor) {
+      if (!actor) return;
+      const headTopY = actor.slot.y - 236 * actor.slot.S;
+      const anchorX = actor.body ? (actor.body.layout?.().x ?? actor.slot.x) : actor.slot.x;
+
+      const halfMax = 295;
+      const sidePad = isLandscape ? 20 : 122;
+      const clampedX = Math.max(sidePad + halfMax, Math.min(W - sidePad - halfMax, anchorX));
+      const pkOrAudActive = !!(lastSnap?.pk_state?.active || lastSnap?.audience_topic_state?.active);
+      const minTopY = isLandscape ? 220 : (pkOrAudActive ? 616 : 605);
+      const targetY = Math.max(minTopY, headTopY - 18);
+
+      bubbleEl.style.left = `${clampedX}px`;
+      bubbleEl.style.top = `${targetY}px`;
+
+      const bw = bubbleEl.offsetWidth || 350;
+      const delta = anchorX - clampedX;
+      const tailPx = Math.max(44, Math.min(bw - 44, bw / 2 + delta));
+      bubbleTailEl.style.left = `${tailPx}px`;
+      bubbleTailInnerEl.style.left = `${tailPx}px`;
+    }
+
+    function updateStreamSync(now) {
+      if (!streamState) return;
+      const actor = actors.get(streamState.speaker);
+      // 【图1 核心 Bug 修复 2】：若说话者已离场或正在退场，立刻停音清空气泡，绝不卡死在首字！
+      if (!actor || actor.exiting) {
+        stopActiveAudio();
+        clearSpeechDisplay();
+        return;
+      }
+
+      let progress = 0;
+      let audioEnded = false;
+      const audioLive =
+        activeAudio &&
+        !muteAudio &&
+        !activeAudio.paused &&
+        !activeAudio.ended &&
+        activeAudio.currentTime > 0.03 &&
+        Number.isFinite(activeAudio.duration) &&
+        activeAudio.duration > 0.1;
+
+      if (audioLive) {
+        progress = Math.max(0, Math.min(1, activeAudio.currentTime / activeAudio.duration));
+      } else if (activeAudio && activeAudio.ended && streamState.audioStarted) {
+        progress = 1;
+        audioEnded = true;
+      } else {
+        const elapsed = (now - streamState.startTime) / 1000;
+        const dur = Math.max(0.95, streamState.duration);
+        progress = Math.max(0, Math.min(1, elapsed / dur));
+        if (elapsed >= dur + 0.5) audioEnded = true;
+      }
+
+      progress = Math.max(streamState.maxProgress || 0, progress);
+      streamState.maxProgress = progress;
+
+      const timings = streamState.timings;
+      const totalChars = streamState.fullText.length;
+      let shown = 1;
+      if (timings && timings.length === totalChars) {
+        const adj = Math.min(1, progress + 0.05);
+        let lo = 0;
+        while (lo < totalChars && timings[lo] <= adj) lo++;
+        shown = Math.max(1, Math.min(totalChars, lo + (progress > 0.95 ? 1 : 0)));
+      } else {
+        shown = Math.max(1, Math.min(totalChars, Math.ceil(progress * totalChars)));
+      }
+
+      const isDone = audioEnded || progress >= 0.995;
+      if (shown !== streamState.lastShown || (isDone && !streamState.markedDone)) {
+        if (shown > streamState.lastShown && !isDone && actor.ready && actor.body) {
+          const ch = streamState.fullText[shown - 1] || '';
+          if (!/[，。！？、；：…\s,.!?~～]/.test(ch)) actor.body.talk();
+        }
+        streamState.lastShown = shown;
+        if (isDone) streamState.markedDone = true;
+        renderStreamText(streamState.fullText, shown, isDone);
+      } else if (!isDone && actor.ready && actor.body && Math.random() < 0.28) {
+        actor.body.talk();
+      }
+
+      positionBubbleAboveSpeaker(actor);
+
+      const hardEnd = streamState.startTime + Math.max(1800, streamState.duration * 1000 + 850);
+      if ((audioEnded && streamState.endedAt && now - streamState.endedAt > 480) || now > hardEnd) {
+        clearSpeechDisplay();
+      }
+    }
+
+    // ==================== 6. 同步休息区、红蓝 PK 条、观众出题横幅与状态快照 ====================
+    let toastTimer = null;
+    let barrageTimer = null;
+
+    function showToast(msg) {
+      const el = document.getElementById('toast-banner');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+    }
+
+    function syncRestPanel(bench) {
+      const list = bench || [];
+      document.getElementById('rest-count').textContent = `${list.length}位休息`;
+      const showLimit = isLandscape ? 5 : 3;
+      document.getElementById('rest-list').innerHTML = list.slice(0, showLimit).map((b, i) => `
+        <div class="rest-chip ${i === 0 ? 'next-up' : ''}">
+          <img src="/static/avatars_coop/${b.id}.png${ASSET_VER}" onerror="this.src='${b.avatar_png}'" alt="" />
+          <span>${escapeHtml(NICKNAMES[b.id] || b.id)}</span>
+          ${i === 0 ? '<span class="next-tag">下一位</span>' : ''}
+        </div>
+      `).join('');
+    }
+
+    function syncPKAndAudienceBanners(snap) {
+      const pk = snap.pk_state || {};
+      const pkEl = document.getElementById('pk-banner');
+      if (pk.active) {
+        pkEl.classList.add('show');
+        document.getElementById('pk-title').textContent = `⚔️ 辩论 PK：${pk.topic || '谁更有道理？'}`;
+        document.getElementById('pk-timer').textContent = `⏱️ ${Math.max(0, Math.round(pk.remaining_sec ?? 60))}s`;
+        const rName = NICKNAMES[pk.red_id] || '红方';
+        const bName = NICKNAMES[pk.blue_id] || '蓝方';
+        document.getElementById('pk-red-label').textContent = `🔴 ${rName}：${pk.red_stance || '正方'}`;
+        document.getElementById('pk-blue-label').textContent = `${pk.blue_stance || '反方'}：${bName} 🔵`;
+        const rv = Number(pk.red_votes || 0), bv = Number(pk.blue_votes || 0);
+        const tot = rv + bv;
+        const rPct = tot > 0 ? Math.max(14, Math.min(86, Math.round((rv / tot) * 100))) : 50;
+        const bPct = 100 - rPct;
+        const rBar = document.getElementById('pk-bar-red');
+        rBar.style.width = `${rPct}%`;
+        rBar.textContent = `${rPct}% (${rv}票)`;
+        document.getElementById('pk-bar-blue').textContent = `(${bv}票) ${bPct}%`;
+      } else {
+        pkEl.classList.remove('show');
+      }
+
+      const aud = snap.audience_topic_state || {};
+      const audEl = document.getElementById('aud-topic-banner');
+      if (aud.active && !pk.active) {
+        audEl.classList.add('show');
+        const stepTxt = aud.step ? `（第 ${aud.step}/3 位吐槽中）` : '（3人从左到右依次吐槽）';
+        document.getElementById('aud-topic-sub').textContent = `🎬 观众【${aud.user || '热心网友'}】出题 ${stepTxt}`;
+        document.getElementById('aud-topic-main').textContent = `《${aud.topic || ''}》`;
+      } else {
+        audEl.classList.remove('show');
+      }
+
+      document.getElementById('human-mic-banner').classList.toggle('show', !!snap.human_mic_active);
+      // 竖屏下 PK 面板 / 观众出题横幅 / 真人开麦条激活时，自动让位淡出互动指南，保证顶部零重叠！
+      const yieldGuide = !isLandscape && (!!pk.active || !!aud.active || !!snap.human_mic_active);
+      guideCardEl.classList.toggle('yield-hidden', yieldGuide);
+    }
+
+    function applySnapshot(snap) {
+      if (!snap) return;
+      lastSnap = snap;
+      window.__currentVoiceRate = Number(snap.voice_playback_rate || 0.88);
+      if (activeAudio && !activeAudio.paused) {
+        try { activeAudio.playbackRate = window.__currentVoiceRate; } catch (_) {}
+      }
+      const dot = document.getElementById('live-dot');
+      dot.className = snap.live_status === 'live' ? 'ai-dot' : 'ai-dot idle';
+
+      const nextProp = snap.desk_prop_mode || 'none';
+      if (nextProp !== deskPropMode) { deskPropMode = nextProp; propTransition = 0.0; syncDeskPropLabel(); }
+      if (typeof snap.show_guide_card === 'boolean' && params.get('guide') !== '0') showGuideCard = snap.show_guide_card;
+      syncGuideCardUI(snap.guide_title, snap.guide_items);
+      syncRestPanel(snap.bench || []);
+      syncPKAndAudienceBanners(snap);
+
+      const stageList = (snap.stage || []).slice(0, 3);
+      const slots = getFormationSlots(stageList.length);
+      const keepIds = new Set();
+      stageOrder = stageList.map(c => c.persona.id);
+
+      stageList.forEach((card, idx) => {
+        const pid = card.persona.id;
+        keepIds.add(pid);
+        const slot = slots[Math.min(idx, slots.length - 1)];
+        if (actors.has(pid)) {
+          const actor = actors.get(pid);
+          actor.persona = card.persona;
+          actor.state = { ...card.state };
+          actor.exiting = false;
+          syncActorSlot(actor, slot);
+        } else {
+          createCoopanionActor(pid, card.persona, slot, initialLoaded).then((actor) => {
+            actor.state = { ...card.state };
+            actor.displayStamina = Number(card.state.stamina ?? 100);
+          });
+        }
+      });
+
+      for (const pid of Array.from(actors.keys())) {
+        if (!keepIds.has(pid)) disposeActor(pid);
+      }
+      initialLoaded = true;
+    }
+
+    function handleMessage(msg) {
+      if (msg.type === 'state_sync') {
+        applySnapshot(msg);
+      } else if (msg.type === 'speak') {
+        const sid = Number(msg.speech_id || (activeSpeechId + 1));
+        if (sid < activeSpeechId) return;
+        activeSpeechId = sid;
+
+        stopActiveAudio();
+        for (const a of actors.values()) a.hostEl.classList.remove('speaking');
+
+        const speakerId = msg.speaker;
+        const actor = actors.get(speakerId);
+        if (!actor || !actor.ready) {
+          if (actor && !actor.exiting) pendingSpeakByPid.set(speakerId, msg);
+          return;
+        }
+        if (actor.exiting) return;
+
+        const text = String(msg.text || '').trim();
+        if (!text) return;
+        const duration = Math.max(1.0, Number(msg.duration || 2.8));
+        const rate = Number(msg.playback_rate || window.__currentVoiceRate || 0.88);
+        const borderCol = msg.bubble_border || msg.color || '#60a5fa';
+        const bgCol = msg.bubble_bg || 'rgba(255,255,255,0.97)';
+
+        bubbleEl.style.background = bgCol;
+        bubbleEl.style.borderColor = borderCol;
+        bubbleEl.style.setProperty('--spk-accent', borderCol);
+        bubbleTailEl.style.borderTopColor = borderCol;
+        bubbleTailInnerEl.style.borderTopColor = bgCol;
+
+        if (msg.familiar_user) {
+          bubbleFamiliarEl.textContent = `💖 记得【${msg.familiar_user}】的小心心哦~`;
+          bubbleFamiliarEl.classList.add('show');
+        } else {
+          bubbleFamiliarEl.classList.remove('show');
+        }
+
+        streamState = {
+          speechId: sid, speaker: speakerId, fullText: text, emotion: msg.emotion || 'happy',
+          timings: Array.isArray(msg.char_timings) ? msg.char_timings : null,
+          startTime: performance.now(), duration, lastShown: 0, maxProgress: 0,
+          markedDone: false, endedAt: 0, audioStarted: false,
+        };
+
+        actor.hostEl.classList.add('speaking');
+        actor.lastSpeakEmoHoldAt = performance.now() / 1000;
+        if (actor.ready && actor.body) {
+          if (actor.isSeated && postureOverride !== 'sit') { actor.isSeated = false; actor.body.do('stand'); }
+          const emo = mapEmotionToCoopanion(msg.emotion || 'happy');
+          if (emo !== 'neutral') actor.body.do(emo);
+          if (emo === 'angry') actor.body.do('shake');
+          else if (emo === 'happy' || emo === 'smug') actor.body.do('nod');
+          else if (emo === 'surprised') actor.body.cue('perk');
+          else actor.body.cue('heard');
+          actor.body.talk();
+        }
+
+        renderStreamText(text, 1, false);
+        bubbleEl.classList.remove('show');
+        void bubbleEl.offsetWidth;
+        bubbleEl.classList.add('show');
+        positionBubbleAboveSpeaker(actor);
+
+        const rxMap = msg.reactions || {};
+        for (const [pid, a] of actors.entries()) {
+          if (pid === speakerId || !a.ready || !a.body) continue;
+          const rEmo = mapEmotionToCoopanion(rxMap[pid] || '');
+          if (rEmo && rEmo !== 'neutral') a.body.do(rEmo);
+        }
+
+        if (msg.audio_url) {
+          playSingleTrackAudio(
+            msg.audio_url, rate,
+            () => { if (streamState && streamState.speechId === sid) { streamState.audioStarted = true; streamState.startTime = performance.now(); } },
+            () => { if (streamState && streamState.speechId === sid) streamState.endedAt = performance.now(); }
+          );
+        }
+      } else if (msg.type === 'barrage_ack') {
+        const a = actors.get(msg.target);
+        if (a && a.ready && a.body && !a.exiting) {
+          const emo = mapEmotionToCoopanion(msg.emotion || 'happy');
+          if (emo && emo !== 'neutral') a.body.do(emo);
+          if (msg.motion) a.body.do(msg.motion);
+          a.body.cue('perk');
+        }
+      } else if (msg.type === 'stage_exit') {
+        const a = actors.get(msg.outgoing);
+        if (streamState && streamState.speaker === msg.outgoing) {
+          stopActiveAudio();
+          clearSpeechDisplay();
+        }
+        if (a && a.ready && a.body) {
+          a.exiting = true;
+          a.body.do('wave');
+          spawnMagicBurst(a.curX ?? a.slot.x, (a.curY ?? a.slot.y) - 160, a.persona?.color || '#fb923c');
+          setTimeout(() => { if (a.hostEl) a.hostEl.style.opacity = '0.04'; }, 140);
+        }
+        showToast(`✨ ${NICKNAMES[msg.outgoing] || '小伙伴'}回小屋休息充电啦~`);
+      } else if (msg.type === 'stage_enter') {
+        showToast(`🌸 ${NICKNAMES[msg.incoming] || '新小伙伴'}闪亮登场！`);
+      } else if (msg.type === 'gift_boost') {
+        const a = actors.get(msg.target);
+        if (a) {
+          spawnMagicBurst(a.slot.x, a.slot.y - 200, '#f472b6');
+          if (a.ready && a.body) { a.body.do('love'); a.body.do('hop'); }
+        }
+        showToast(`💗 谢谢【${msg.user}】送来的【${msg.gift_name}】~`);
+      } else if (msg.type === 'barrage') {
+        if (!hideBarragePill) {
+          const bp = document.getElementById('barrage-pill');
+          bp.textContent = `💬 ${msg.user}：${msg.text}`;
+          bp.classList.add('show');
+          clearTimeout(barrageTimer);
+          barrageTimer = setTimeout(() => bp.classList.remove('show'), 4600);
+        }
+      } else if (msg.type === 'live_stopped') {
+        stopActiveAudio();
+        clearSpeechDisplay();
+      }
+    }
+
+    function connectWS() {
+      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const ws = new WebSocket(`${proto}//${location.host}/ws`);
+      ws.onmessage = (ev) => { try { handleMessage(JSON.parse(ev.data)); } catch (_) {} };
+      ws.onclose = () => setTimeout(connectWS, 1500);
+      ws.onerror = () => ws.close();
+    }
+    connectWS();
+
+    window.__stageHandleMsg = handleMessage;
+    window.__stageDebugState = () => ({
+      streamSpeaker: streamState?.speaker || null,
+      actors: Array.from(actors.keys()),
+      readyActors: Array.from(actors.values()).filter(a => a.ready).map(a => a.id),
+      hasActiveAudio: !!activeAudio,
+      bubbleShow: bubbleEl.classList.contains('show'),
+      bubbleText: bubbleTextEl.textContent || '',
+      pkShow: document.getElementById('pk-banner').classList.contains('show'),
+      audShow: document.getElementById('aud-topic-banner').classList.contains('show'),
+      familiarShow: bubbleFamiliarEl.classList.contains('show'),
+    });
+
+    // ==================== 7. 绘制露台地板 + 精力条（含PK锁定态）+ 可选前景道具 + 樱花粒子 ====================
+    function drawDeckFloor(t) {
+      const deckTop = isLandscape ? 830 : 1055;
+      fCtx.clearRect(0, 0, W, H);
+      fCtx.save();
+
+      const edgeGrad = fCtx.createLinearGradient(0, deckTop - 42, 0, deckTop + 18);
+      edgeGrad.addColorStop(0, 'rgba(30, 20, 10, 0)');
+      edgeGrad.addColorStop(1, 'rgba(56, 36, 16, 0.25)');
+      fCtx.fillStyle = edgeGrad;
+      fCtx.fillRect(0, deckTop - 42, W, 60);
+
+      fCtx.beginPath();
+      fCtx.moveTo(-30, deckTop + 20);
+      fCtx.quadraticCurveTo(W * 0.5, deckTop - 22, W + 30, deckTop + 20);
+      fCtx.lineTo(W + 30, H + 30); fCtx.lineTo(-30, H + 30); fCtx.closePath();
+
+      const fg = fCtx.createLinearGradient(0, deckTop - 10, 0, H);
+      fg.addColorStop(0, '#e8be88'); fg.addColorStop(0.36, '#cb9357'); fg.addColorStop(1, '#87562b');
+      fCtx.fillStyle = fg; fCtx.fill();
+
+      fCtx.save(); fCtx.clip();
+      fCtx.strokeStyle = 'rgba(84, 44, 14, 0.14)'; fCtx.lineWidth = 3;
+      for (let i = 1; i <= 8; i++) {
+        const ly = deckTop + i * (isLandscape ? 36 : 74);
+        fCtx.beginPath(); fCtx.moveTo(-20, ly + 10); fCtx.quadraticCurveTo(W * 0.5, ly - 10, W + 20, ly + 10); fCtx.stroke();
+      }
+      fCtx.beginPath();
+      fCtx.ellipse(W * 0.5, isLandscape ? 945 : 1200, isLandscape ? 700 : 455, isLandscape ? 92 : 122, 0, 0, Math.PI * 2);
+      fCtx.fillStyle = 'rgba(255, 250, 238, 0.44)'; fCtx.fill();
+      fCtx.strokeStyle = 'rgba(245, 158, 11, 0.45)'; fCtx.lineWidth = 4; fCtx.setLineDash([12, 8]); fCtx.stroke(); fCtx.setLineDash([]);
+      fCtx.restore();
+
+      fCtx.strokeStyle = 'rgba(255, 246, 224, 0.82)'; fCtx.lineWidth = 5;
+      fCtx.beginPath(); fCtx.moveTo(-30, deckTop + 20); fCtx.quadraticCurveTo(W * 0.5, deckTop - 22, W + 30, deckTop + 20); fCtx.stroke();
+
+      for (const actor of actors.values()) {
+        if (!actor.ready || actor.exiting) continue;
+        const pos = actor.body?.layout?.() || { x: actor.slot.x };
+        const fx = pos.x ?? actor.slot.x;
+        const fy = actor.slot.y;
+        const isSpk = streamState && streamState.speaker === actor.id;
+        fCtx.save();
+        fCtx.fillStyle = 'rgba(68, 38, 16, 0.14)';
+        fCtx.beginPath(); fCtx.ellipse(fx, fy - 1, 62 * actor.slot.S * 0.50, 13 * actor.slot.S * 0.50, 0, 0, Math.PI * 2); fCtx.fill();
+        if (isSpk) {
+          const pulse = 1 + Math.sin(t * 7) * 0.08;
+          fCtx.strokeStyle = actor.persona?.color || '#fbbf24';
+          fCtx.lineWidth = 5; fCtx.globalAlpha = 0.84;
+          fCtx.beginPath(); fCtx.ellipse(fx, fy - 1, 80 * actor.slot.S * 0.52 * pulse, 20 * actor.slot.S * 0.52 * pulse, 0, 0, Math.PI * 2); fCtx.stroke();
+        }
+        fCtx.restore();
+      }
+      fCtx.restore();
+    }
+
+    const envParticles = [];
+    for (let i = 0; i < 30; i++) {
+      envParticles.push({
+        x: Math.random() * W, y: Math.random() * H, r: 4.5 + Math.random() * 5.5,
+        vx: 14 + Math.random() * 18, vy: 20 + Math.random() * 24,
+        rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 1.8, ph: Math.random() * 10,
+      });
+    }
+
+    function drawStaminaBars(t, dt) {
+      const pkFrozen = !!lastSnap?.pk_state?.active;
+      for (const actor of actors.values()) {
+        if (!actor.ready || actor.exiting) continue;
+        const targetSt = Math.max(0, Math.min(100, Number(actor.state?.stamina ?? 100)));
+        actor.displayStamina += (targetSt - actor.displayStamina) * Math.min(1, dt * 8);
+        const pct = actor.displayStamina / 100;
+
+        const pos = actor.body?.layout?.() || { x: actor.slot.x };
+        const cx = pos.x ?? actor.slot.x;
+        const by = actor.slot.y + 18;
+        const bw = Math.round(108 * Math.min(1.2, Math.max(0.86, actor.slot.S / 2.0)));
+        const bh = 13;
+
+        pCtx.save();
+        pCtx.fillStyle = 'rgba(28, 22, 18, 0.64)';
+        pCtx.beginPath(); pCtx.roundRect(cx - bw / 2 - 2, by - 2, bw + 4, bh + 4, 9); pCtx.fill();
+        pCtx.strokeStyle = pkFrozen ? '#93c5fd' : 'rgba(255, 255, 255, 0.90)'; pCtx.lineWidth = 2; pCtx.stroke();
+
+        let barCol = pkFrozen ? '#38bdf8' : '#22c55e';
+        if (!pkFrozen) {
+          if (pct < 0.25) barCol = (Math.sin(t * 10) > 0) ? '#ef4444' : '#fb7185';
+          else if (pct < 0.55) barCol = '#f59e0b';
+        }
+        const fillW = Math.max(6, (bw - 2) * pct);
+        pCtx.fillStyle = barCol;
+        pCtx.beginPath(); pCtx.roundRect(cx - bw / 2 + 1, by + 1, fillW, bh - 2, 6); pCtx.fill();
+
+        pCtx.fillStyle = pkFrozen ? '#bae6fd' : '#fde047';
+        pCtx.strokeStyle = '#78350f'; pCtx.lineWidth = 1.6;
+        pCtx.beginPath(); pCtx.arc(cx - bw / 2 - 6, by + bh / 2, 8, 0, Math.PI * 2); pCtx.fill(); pCtx.stroke();
+
+        if (pkFrozen) {
+          pCtx.fillStyle = '#0369a1';
+          pCtx.font = '900 15px "Microsoft YaHei"';
+          pCtx.textAlign = 'center';
+          pCtx.fillText('⏸️ PK锁定', cx, by + 32);
+        }
+        pCtx.restore();
+      }
+    }
+
+    function drawOptionalDeskProp() {
+      if (deskPropMode === 'none') return;
+      const cx = W * 0.5, cy = isLandscape ? 1000 : 1310;
+      const u = propTransition;
+      const sc = u >= 1 ? 1 : (0.72 + 0.28 * u);
+      const ink = '#5a3219';
+
+      pCtx.save();
+      pCtx.globalAlpha = Math.min(1, u * 1.6);
+      pCtx.translate(cx, cy); pCtx.scale(sc, sc); pCtx.translate(-cx, -cy);
+
+      const rx = 275, ry = 64;
+      pCtx.fillStyle = 'rgba(54, 28, 10, 0.22)'; pCtx.beginPath(); pCtx.ellipse(cx, cy + 34, rx * 0.94, ry * 0.78, 0, 0, Math.PI * 2); pCtx.fill();
+      pCtx.fillStyle = '#9b5c2b'; pCtx.beginPath(); pCtx.ellipse(cx, cy + 12, rx, ry, 0, 0, Math.PI * 2); pCtx.fill();
+      pCtx.strokeStyle = '#572e10'; pCtx.lineWidth = 3.5; pCtx.stroke();
+      const tg = pCtx.createLinearGradient(cx, cy - ry, cx, cy + ry);
+      tg.addColorStop(0, '#f7d5a3'); tg.addColorStop(1, '#c98a47');
+      pCtx.fillStyle = tg; pCtx.beginPath(); pCtx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); pCtx.fill();
+      pCtx.strokeStyle = '#6b3b16'; pCtx.lineWidth = 3.5; pCtx.stroke();
+
+      if (deskPropMode === 'tea') {
+        pCtx.fillStyle = '#ffffff'; pCtx.beginPath(); pCtx.ellipse(cx, cy + 14, 72, 20, 0, 0, Math.PI * 2); pCtx.fill();
+        pCtx.fillStyle = '#fff5f7'; pCtx.beginPath(); pCtx.roundRect(cx - 46, cy - 26, 92, 38, 12); pCtx.fill();
+        pCtx.strokeStyle = ink; pCtx.lineWidth = 2.8; pCtx.stroke();
+        pCtx.fillStyle = '#fbcfe8'; pCtx.beginPath(); pCtx.roundRect(cx - 44, cy - 24, 88, 14, 8); pCtx.fill();
+        for (const sx of [-26, 0, 26]) {
+          pCtx.fillStyle = '#ef4444'; pCtx.beginPath(); pCtx.arc(cx + sx, cy - 30, 7, 0, Math.PI * 2); pCtx.fill();
+        }
+      } else if (deskPropMode === 'mic') {
+        pCtx.fillStyle = '#fffbeb'; pCtx.strokeStyle = ink; pCtx.lineWidth = 3;
+        pCtx.beginPath(); pCtx.roundRect(cx - 88, cy - 36, 176, 66, 14); pCtx.fill(); pCtx.stroke();
+        pCtx.fillStyle = '#ec4899'; pCtx.font = '900 20px "Microsoft YaHei"'; pCtx.textAlign = 'center';
+        pCtx.fillText('💬 弹幕互动中', cx, cy - 7);
+        pCtx.fillStyle = '#78716c'; pCtx.font = 'bold 16px "Microsoft YaHei"';
+        pCtx.fillText('喊外号翻牌陪聊~', cx, cy + 19);
+      }
+      pCtx.restore();
+    }
+
+    function drawPropsAndParticles(t, dt) {
+      if (propTransition < 1.0) propTransition = Math.min(1.0, propTransition + dt * 4.8);
+      pCtx.clearRect(0, 0, W, H);
+      drawStaminaBars(t, dt);
+      drawOptionalDeskProp();
+
+      for (const p of envParticles) {
+        p.x += (p.vx + Math.sin(t * 1.5 + p.ph) * 15) * dt;
+        p.y += p.vy * dt; p.rot += p.vr * dt;
+        if (p.y > H + 20) { p.y = -20; p.x = Math.random() * W; }
+        if (p.x > W + 20) p.x = -20;
+        pCtx.save(); pCtx.translate(p.x, p.y); pCtx.rotate(p.rot);
+        pCtx.fillStyle = 'rgba(255, 198, 222, 0.85)';
+        pCtx.beginPath(); pCtx.ellipse(0, 0, p.r * 1.25, p.r * 0.72, 0, 0, Math.PI * 2); pCtx.fill();
+        pCtx.restore();
+      }
+
+      for (let i = fxBursts.length - 1; i >= 0; i--) {
+        const fx = fxBursts[i];
+        fx.t += dt;
+        const p = fx.t / fx.dur;
+        if (p >= 1) { fxBursts.splice(i, 1); continue; }
+        for (const pc of fx.pieces) {
+          pc.x += pc.vx * dt; pc.y += pc.vy * dt; pc.vy += 260 * dt;
+          pCtx.save(); pCtx.globalAlpha = Math.max(0, 1 - p);
+          pCtx.fillStyle = pc.color;
+          pCtx.beginPath(); pCtx.arc(pc.x, pc.y, pc.r * (1 - p * 0.4), 0, Math.PI * 2); pCtx.fill();
+          pCtx.restore();
+        }
+      }
+    }
+
+    // ==================== 8. 智能 30FPS 省电同步渲染（与 OBS 30FPS 帧率对齐，直降 50% CPU/GPU 占用！） ====================
+    let lastTs = performance.now();
+    function renderLoop(now) {
+      requestAnimationFrame(renderLoop);
+      // 精准 30FPS 节流（每帧 >= 31ms），既与 OBS 推流 30FPS 丝滑齐平，又彻底减少日常用电脑时的 GPU/CPU 发热！
+      if (now - lastTs < 31) return;
+      const dt = Math.min(0.055, (now - lastTs) / 1000);
+      lastTs = now;
+      const t = now / 1000;
+
+      const spkId = streamState?.speaker || '';
+      const bubbleLeftPx = parseFloat(bubbleEl.style.left) || -9999;
+
+      for (const actor of actors.values()) {
+        if (!actor.ready || !actor.body) continue;
+        const isSpk = actor.id === spkId;
+
+        if (!actor.exiting) {
+          const easeK = Math.min(1, dt * 11.5);
+          actor.curX += (actor.slot.x - actor.curX) * easeK;
+          actor.curY += (actor.slot.y - actor.curY) * easeK;
+          if (Math.abs(actor.slot.x - actor.curX) < 0.8) actor.curX = actor.slot.x;
+          if (Math.abs(actor.slot.y - actor.curY) < 0.8) actor.curY = actor.slot.y;
+          if (!actor.enteredCueDone && Math.abs(actor.slot.x - actor.curX) < 3) {
+            actor.enteredCueDone = true;
+            actor.body.cue('bounce');
+          }
+        }
+
+        const gaze = computeGazeAndFacing(actor, spkId, t);
+        if (!actor.exiting) {
+          actor.body.place(actor.curX, gaze.facing, actor.curY);
+        }
+        actor.body.pointer('move', gaze.pt);
+
+        tickActorLivingPersonality(actor, t, isSpk);
+        actor.body.step(dt, true);
+
+        const hitsBubble = !!streamState && Math.abs(actor.curX - bubbleLeftPx) < 330;
+        if (!isSpk && !hitsBubble && actor.state.reaction_emoji && !actor.exiting) {
+          actor.rxEl.textContent = actor.state.reaction_emoji;
+          actor.rxEl.style.left = `${actor.curX}px`;
+          actor.rxEl.style.top = `${actor.curY - 236 * actor.slot.S - 12}px`;
+          actor.rxEl.classList.add('show');
+        } else {
+          actor.rxEl.classList.remove('show');
+        }
+      }
+
+      updateStreamSync(now);
+      drawDeckFloor(t);
+      drawPropsAndParticles(t, dt);
+    }
+    requestAnimationFrame(renderLoop);
+  </script>
+</body>
+</html>
