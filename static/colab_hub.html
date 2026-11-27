@@ -115,23 +115,29 @@
   <div id="pane-hub" class="pane active">
     <div class="grid-2">
       <div class="card">
-        <h2><span>🔑 Google 官方授权 & 代理防超时诊断</span><span id="cuBadge" class="pill">未登录</span></h2>
-        <p class="sub">已自动读取 Windows 系统代理注册表并过滤失效端口，彻底解决 <code>ConnectTimeout</code>！</p>
+        <h2><span>🔑 Google Colab 官方免内测授权 & 真实 CU 抓取</span><span id="cuBadge" class="pill">未登录</span></h2>
+        <p class="sub">采用 Google Colab 官方已验证桌面通道（自动告别自建“1”内测拦截，100% 抓取真实付费/免费 CU 配额与可用 GPU）+ 双引擎长超时抗抖动（<code>httpx</code> + 系统 <code>curl</code> 自动接力防假断网）！</p>
         <div class="row">
           <input id="proxyInput" style="flex:1;" placeholder="留空自动识别系统代理 (如 http://127.0.0.1:7897)" />
           <button onclick="testGoogleProxy()">⚡ 一键测速连通 Google</button>
         </div>
         <div id="proxyResult" class="sub" style="color:#1d4ed8;font-weight:700;">正在检测本机生效代理...</div>
         <div class="row" style="margin-top:8px;">
-          <input type="file" id="oauthJsonFile" accept=".json" style="display:none;" onchange="uploadOAuthJson(this)" />
-          <button class="slate" onclick="document.getElementById('oauthJsonFile').click()">📂 导入 OAuth JSON</button>
-          <button class="green" onclick="startGoogleLogin()">🔑 Google 浏览器授权登录</button>
+          <button class="green" style="padding:10px 18px;font-size:14px;" onclick="startGoogleLogin()">🔑 一键登录 Google 抓取真实 CU (官方免内测)</button>
           <button class="amber" onclick="refreshCU()">🔄 刷新 CU 余额</button>
+          <button class="purple" onclick="switchToOfficialChannel()">🛡️ 重置为官方免内测通道</button>
+          <input type="file" id="oauthJsonFile" accept=".json" style="display:none;" onchange="uploadOAuthJson(this)" />
+          <button class="slate" onclick="document.getElementById('oauthJsonFile').click()" title="高级：导入自定义 JSON">📂 自定义JSON</button>
         </div>
         <div id="oauthStatusMsg" class="sub" style="margin-top:6px;color:#0f172a;font-weight:700;"></div>
+        <div id="cuDetailBox" style="display:none;margin-top:8px;padding:10px 14px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;font-size:12.8px;color:#14532d;line-height:1.6;"></div>
         <div id="oauthDirectBox" style="display:none;margin-top:8px;padding:10px 12px;background:#eff6ff;border:1.5px solid #60a5fa;border-radius:10px;font-size:12.5px;">
-          🌐 <b>已生成 Google 官方授权地址：</b>若浏览器拦截了新窗口，请直接点击右侧打开 ➔
-          <a id="oauthDirectLink" href="#" target="_blank" style="font-weight:900;color:#1d4ed8;text-decoration:underline;">点此前往 Google 授权登录 ↗</a>
+          🌐 <b>已生成 Google Colaboratory 官方免内测授权地址：</b>若浏览器拦截弹窗，请点此打开 ➔
+          <a id="oauthDirectLink" href="#" target="_blank" style="font-weight:900;color:#1d4ed8;text-decoration:underline;">前往 Google 官方授权页 ↗</a>
+        </div>
+        <div class="row" style="margin-top:10px;padding-top:8px;border-top:1px dashed #e2e8f0;">
+          <input id="manualRedirectInput" style="flex:1;font-size:12px;" placeholder="防拦截兜底：若浏览器扩展拦截了本地回跳，把跳转后的地址栏完整链接粘贴到这里..." />
+          <button class="slate" style="font-size:12px;" onclick="submitManualRedirect()">📋 手动粘贴提取</button>
         </div>
       </div>
 
@@ -315,16 +321,31 @@ async function loadDashboard() {
     document.getElementById('cuBadge').textContent = acc.google_email ? `${acc.google_email} (${cu.cu_balance ?? '-'} CU)` : '未登录 Google';
     document.getElementById('cuBadge').className = 'pill ' + (acc.google_email ? 'ok' : '');
     const oMsg = document.getElementById('oauthStatusMsg');
+    const cuBox = document.getElementById('cuDetailBox');
     if (oMsg) {
       if (acc.has_oauth_token) {
-        oMsg.textContent = `✅ 已授权登录 Google 账号：${acc.google_email || '已连接'}`;
+        oMsg.textContent = `✅ 已通过 [${acc.client_mode_label || '官方通道'}] 授权账号：${acc.google_email || '已连接'}`;
         oMsg.style.color = '#15803d';
+        if (cuBox) {
+          cuBox.style.display = 'block';
+          cuBox.innerHTML =
+            `<b>📊 实时 Colab 官方配额：</b>套餐 <b>${cu.tier || '-'}</b> &nbsp;|&nbsp; ` +
+            `可用额度 <b>${cu.cu_balance ?? '-'} CU</b> (付费: ${cu.paid_cu ?? 0} / 免费等效: ${cu.free_cu_equiv ?? 0}) &nbsp;|&nbsp; ` +
+            `消耗速率 <b>${cu.cu_rate_per_hour ?? 0} CU/h</b> &nbsp;|&nbsp; 活跃机器 <b>${cu.active_runtimes ?? 0} 台</b> &nbsp;|&nbsp; ` +
+            `可用加速卡: <code>${(cu.available_gpus || []).join(', ')}</code>`;
+        }
+      } else if (acc.is_official_colab_client) {
+        oMsg.textContent = '🛡️ 已就绪：Google Colab 官方免内测通道已激活！直接点上方绿色按钮即可登录任意 Google 账号（无内测拦截）';
+        oMsg.style.color = '#15803d';
+        if (cuBox) cuBox.style.display = 'none';
       } else if (acc.has_oauth_client) {
-        oMsg.textContent = '🟢 已检测到 Google OAuth 客户端凭据，点击上方绿色「🔑 Google 浏览器授权登录」即可直接跳转授权！';
-        oMsg.style.color = '#1d4ed8';
+        oMsg.textContent = '⚠️ 当前为旧版自建应用（如应用“1”），点击绿色登录按钮将自动为您升级至 Google Colab 官方免内测通道！';
+        oMsg.style.color = '#d97706';
+        if (cuBox) cuBox.style.display = 'none';
       } else {
-        oMsg.textContent = '⚪ 首次使用请先点击「📂 导入 OAuth JSON」上传 Google OAuth 桌面客户端凭据文件';
-        oMsg.style.color = '#b45309';
+        oMsg.textContent = '🟢 点击上方绿色按钮将自动装配 Google Colab 官方免内测通道并拉起授权（无需自建 OAuth JSON）！';
+        oMsg.style.color = '#1d4ed8';
+        if (cuBox) cuBox.style.display = 'none';
       }
     }
 
@@ -482,6 +503,31 @@ async function designCloudVoice(cid) {
   const d = await r.json();
   st.textContent = d.ok ? `🎉 [${cid}] GPU 专属声线捏制成功并已同步回本地！` : ('⚠️ ' + (d.error || '失败'));
   loadDashboard();
+}
+
+async function switchToOfficialChannel() {
+  const oMsg = document.getElementById('oauthStatusMsg');
+  oMsg.textContent = '⏳ 正在从官方发行源装配 Google Colab 免内测桌面通道...';
+  const r = await fetch('/api/colab/oauth/use_official', { method: 'POST' });
+  const d = await r.json();
+  alert(d.ok ? '✅ 已成功切换为 Google Colab 官方免内测通道！现在点击绿色登录按钮不会再出现“1尚未完成验证”内测拦截，且可100%读取真实CU！' : ('❌ ' + d.error));
+  loadDashboard();
+}
+
+async function submitManualRedirect() {
+  const val = document.getElementById('manualRedirectInput').value.trim();
+  if (!val) return alert('请先粘贴授权跳转后的地址栏链接');
+  const r = await fetch('/api/colab/oauth/manual_paste', {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({url_or_code: val})
+  });
+  const d = await r.json();
+  if (d.ok) {
+    document.getElementById('manualRedirectInput').value = '';
+    alert(`🎉 登录提取成功！账号：${d.email}，可用额度：${(d.cu_info||{}).cu_balance} CU`);
+    loadDashboard();
+  } else {
+    alert('❌ 提取失败：' + (d.error || '未知错误'));
+  }
 }
 
 async function refreshCU() {

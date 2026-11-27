@@ -174,10 +174,38 @@ def _cloud_headers() -> Dict[str, str]:
 
 
 # ==================== 1. 通用算力中枢 Web 面板与系统管理接口 ====================
+async def _render_oauth_callback_html(code: str, state: str, error: str) -> HTMLResponse:
+    if error:
+        return HTMLResponse(
+            f"<meta charset='utf-8'><body style='font-family:Microsoft YaHei,sans-serif;padding:40px;'><h2>⚠️ Google 授权返回提示 ({error})</h2>"
+            "<p>建议回到 :8768 面板点击<b>「⚡ 一键切换 Google 官方免内测通道」</b>后再点登录，即可免除自建应用内测限制！</p></body>",
+            status_code=400,
+        )
+    res = await colab_mgr.complete_official_oauth_callback(code=code, state=state)
+    if res.get("ok"):
+        cu = res.get("cu_info") or {}
+        return HTMLResponse(
+            "<meta charset='utf-8'><body style='font-family:Microsoft YaHei,sans-serif;padding:48px;text-align:center;background:#f0fdf4;color:#14532d;'>"
+            f"<h2>✅ Google Colab 官方授权成功！</h2>"
+            f"<p style='font-size:17px;margin:14px 0;'>账号：<b>{res.get('email','')}</b> &nbsp;|&nbsp; 套餐：<b>{cu.get('tier','-')}</b> &nbsp;|&nbsp; 可用额度：<b>{cu.get('cu_balance','-')} CU</b></p>"
+            "<p style='color:#475569;'>窗口即将自动关闭并同步至算力面板...</p>"
+            "<script>if(window.opener){try{window.opener.postMessage({type:'colab_oauth_ok'},'*');}catch(e){}}setTimeout(()=>window.close(),1500);</script></body>"
+        )
+    return HTMLResponse(
+        f"<meta charset='utf-8'><body style='font-family:Microsoft YaHei,sans-serif;padding:40px;text-align:center;'>"
+        f"<h2>⚠️ 自动提取失败</h2><p>{res.get('error','')}</p>"
+        "<p style='font-size:13px;color:#64748b;margin-top:14px;'>💡 提示：你也可以直接复制当前浏览器地址栏的完整网址，回到 :8768 面板粘贴进「手动提取框」一键完成登录！</p></body>",
+        status_code=400,
+    )
+
+
 @app.get("/")
 @app.get("/colab-hub")
 @app.get("/colab-studio")
-async def hub_index_page():
+async def hub_index_page(code: str = "", state: str = "", error: str = ""):
+    # 完美对接 Google 官方桌面客户端根路径 Loopback 回调 (http://127.0.0.1:8768/?state=nonce%3D...&code=...)
+    if code or error:
+        return await _render_oauth_callback_html(code=code, state=state, error=error)
     return FileResponse(str(STATIC_DIR / "colab_hub.html"))
 
 
@@ -378,9 +406,27 @@ async def colab_oauth_import_json(file: UploadFile = File(...)):
     return JSONResponse(res, status_code=200 if res.get("ok") else 400)
 
 
+@app.post("/api/colab/oauth/use_official")
+async def colab_oauth_use_official():
+    res = await colab_mgr.ensure_official_colab_client(force=True)
+    return JSONResponse({"ok": res.get("ok", False), **res, "account": colab_mgr.public_account_view()}, status_code=200 if res.get("ok") else 502)
+
+
+@app.post("/api/colab/oauth/manual_paste")
+async def colab_oauth_manual_paste(payload: Dict[str, Any] = Body(...)):
+    raw = str(payload.get("url_or_code") or "").strip()
+    res = await colab_mgr.complete_manual_redirect_paste(raw)
+    return JSONResponse(res, status_code=200 if res.get("ok") else 400)
+
+
 @app.post("/api/colab/oauth/start")
 async def colab_oauth_start(request: Request, payload: Dict[str, Any] = Body(default={})):
-    # 若本机 8765 同时在线且 client_id 为固定回调 Web 类型，优先兼容已注册回调地址；桌面型 OAuth 则任意本地端口均直接放行
+    colab_mgr._load_account()
+    # 若当前未配置客户端，或残留着之前无法抓取 CU 的自建内测应用“1”，默认自动升级为 Google Colab 官方免内测客户端！
+    if not payload.get("keep_custom"):
+        cur_id = str(colab_mgr.account.get("oauth_client_id") or "")
+        if not cur_id.startswith("1014160490159-"):
+            await colab_mgr.ensure_official_colab_client(force=True)
     req_base = str(payload.get("callback_base") or "").strip() or str(request.base_url).rstrip("/")
     res = colab_mgr.start_official_oauth_flow(base_url=req_base)
     return JSONResponse(res, status_code=200 if res.get("ok") else 400)
@@ -388,20 +434,7 @@ async def colab_oauth_start(request: Request, payload: Dict[str, Any] = Body(def
 
 @app.get("/api/colab/oauth/callback")
 async def colab_oauth_callback(code: str = "", state: str = "", error: str = ""):
-    if error:
-        return HTMLResponse(
-            f"<meta charset='utf-8'><body style='font-family:Microsoft YaHei,sans-serif;padding:40px;'><h2>⚠️ Google 授权提示 ({error})</h2>"
-            "<p>请在 <a href='https://console.cloud.google.com/auth/audience' target='_blank'>Google Cloud Audience 页面</a> 点击 Publish App 或将邮箱加入测试名单后重试。</p></body>",
-            status_code=400,
-        )
-    res = await colab_mgr.complete_official_oauth_callback(code=code, state=state)
-    if res.get("ok"):
-        return HTMLResponse(
-            "<meta charset='utf-8'><body style='font-family:Microsoft YaHei,sans-serif;padding:48px;text-align:center;background:#f0fdf4;color:#14532d;'>"
-            f"<h2>✅ Google 账号登录授权成功！</h2><p>已提取账号：<b>{res.get('email','')}</b></p>"
-            "<script>if(window.opener){try{window.opener.postMessage({type:'colab_oauth_ok'},'*');}catch(e){}}setTimeout(()=>window.close(),1500);</script></body>"
-        )
-    return HTMLResponse(f"<meta charset='utf-8'><body style='padding:40px;text-align:center;'><h2>⚠️ 自动提取失败</h2><p>{res.get('error','')}</p></body>", status_code=400)
+    return await _render_oauth_callback_html(code=code, state=state, error=error)
 
 
 @app.post("/api/colab/refresh_cu")

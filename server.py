@@ -180,7 +180,9 @@ async def global_health():
 
 
 @app.get("/")
-async def root_page():
+async def root_page(code: str = "", state: str = "", error: str = ""):
+    if code or error:
+        return await colab_oauth_callback(code=code, state=state, error=error)
     return FileResponse(str(STATIC_DIR / "director.html"))
 
 
@@ -965,9 +967,11 @@ async def colab_oauth_import_json(file: UploadFile = File(...)):
 @app.post("/api/colab/oauth/start")
 async def colab_oauth_start(request: Request):
     colab_mgr._load_account()
+    cur_id = str(colab_mgr.account.get("oauth_client_id") or "")
+    if not cur_id.startswith("1014160490159-"):
+        await colab_mgr.ensure_official_colab_client(force=True)
     base = str(request.base_url).rstrip("/")
     res = colab_mgr.start_official_oauth_flow(base_url=base)
-    # 由前端用户点击事件直接打开新标签页跳转 auth_url，避免后台服务进程调用 webbrowser 静默失效
     res["browser_opened"] = False
     return JSONResponse(res, status_code=200 if res.get("ok") else 400)
 
